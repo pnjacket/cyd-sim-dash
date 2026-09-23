@@ -10,8 +10,12 @@
 # started with `&`, do NOT stop a native Windows Python process. They report success and the
 # process keeps sending. Stop-Process does work, so everything goes through here.
 #
+# Run it from PowerShell 7 (pwsh), not the old powershell.exe: Windows PowerShell's default
+# execution policy is Restricted and refuses to load the file at all, with a security error that
+# looks nothing like "wrong shell".
+#
 # Usage:
-#   tools/drive.ps1 gears
+#   pwsh tools/drive.ps1 gears
 #   tools/drive.ps1 sweep -Device 192.168.50.230 -Seconds 300
 #   tools/drive.ps1 -StopOnly
 

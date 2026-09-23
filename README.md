@@ -105,7 +105,23 @@ Some things cannot be asserted from a test. Whether a colour blend bands, whethe
 whether the flash rate feels urgent rather than frantic — those need eyes on the glass, and they are
 what the manual pass is for.
 
-Drive the panel continuously with `--loop`, which repeats until you interrupt it:
+Drive the panel continuously with `--loop`, which repeats until you interrupt it.
+
+**Only ever run one at a time.** Two senders have independent frame stamps, so the device rejects
+about half of everything as out-of-order and the panel jumps between scenarios — which looks like a
+firmware fault and is not one. `tools/drive.ps1` stops any existing sender before starting the next,
+and `tools/e2e.py` refuses to run while anything is broadcasting:
+
+```
+pwsh tools/drive.ps1 gears        # stops whatever is running, then drives this one
+pwsh tools/drive.ps1 -StopOnly    # stop everything
+```
+
+Run it under **pwsh**, not the older `powershell.exe`, whose default execution policy refuses to
+load the file. And note that `pkill -f replay.py` and `kill <pid>` do **not** stop a native Windows
+Python process — both report success while it keeps sending.
+
+Or drive a scenario directly:
 
 ```
 python tools/replay.py synth --host cyd-sim-dash.local --scenario sweep       --loop
