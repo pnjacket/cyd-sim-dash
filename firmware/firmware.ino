@@ -198,7 +198,9 @@ void loop() {
   // response is actually delivered before the device goes away.
   if (configpage::rebootRequested()) {
     Serial.println("[config] restarting to apply changes");
-    delay(400);
+    delay(400);                      // let the reply finish leaving before anything disturbs WiFi
+    configpage::applyPendingWifi();
+    delay(200);
     ESP.restart();
   }
 

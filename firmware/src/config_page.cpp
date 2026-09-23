@@ -14,10 +14,28 @@ DeviceConfig* g_live = nullptr;
 net::Counters g_counters;
 bool          g_rebootRequested = false;
 
-// The device's WiFi credentials are held by WiFiManager in its own NVS namespace, not in
-// DeviceConfig, so this page changes the two fields this product owns: the sim-PC address and the
-// device credential. Changing the WiFi network means re-provisioning, which is honest — a device
-// that cannot reach the new network could not serve this page to confirm the change anyway.
+// A WiFi change, held until the response has been delivered.
+//
+// WiFi.begin() persists the credentials AND immediately drops the current association, so calling
+// it inside the handler would cut the connection the reply is travelling over - the operator would
+// see a failed request and have no idea whether the change took. It is applied on the way to the
+// restart instead.
+bool g_wifiPending = false;
+char g_pendingSsid[33] = {0};
+char g_pendingPass[64] = {0};
+
+// WiFi credentials are NOT copied into DeviceConfig. They go to the ESP32's own WiFi store, which
+// is where the boot path already reads them from, so the passphrase exists in exactly one place
+// rather than two - one fewer copy of a secret that SEC-STORAGE-PLAIN already records as
+// recoverable with physical access.
+//
+// **On failure the device raises the captive portal. It never rolls back and never erases.**
+// Decided by the operator on 2026-09-23, and the reasoning is the part worth keeping: a device
+// cannot tell a wrong passphrase from a router that happens to be rebooting. Any automatic
+// rollback is therefore a guess, and a guess that can discard a *correct* setting because the
+// network was briefly down. Raising the portal puts the decision in front of the person who
+// actually knows which it was, and it is the same path an unprovisioned device already takes - so
+// this adds a route into an existing recovery surface rather than a second recovery mechanism.
 
 bool credentialIsSet() {
   return g_live != nullptr && g_live->credential[0] != '\0';
@@ -100,7 +118,20 @@ void sendPage(const char* notice, bool noticeIsError) {
               "currently unprotected. Set one below before saving anything else.</div>");
   }
 
+  char ssid[128] = {0};
+  appendEscapedHtml(ssid, sizeof(ssid), WiFi.SSID().c_str());
+
   page += F("<form method=\"POST\" action=\"/save\">"
+            "<label for=\"ssid\">Wi-Fi network</label>"
+            "<input id=\"ssid\" name=\"ssid\" value=\"");
+  page += ssid;
+  page += F("\">"
+            "<div class=\"hint\">Changing this restarts the device. If it cannot join, it raises "
+            "its own setup network again rather than guessing - see the note below.</div>"
+            "<label for=\"wifipass\">Wi-Fi password</label>"
+            "<input id=\"wifipass\" name=\"wifipass\" type=\"password\" placeholder=\"unchanged\">"
+            "<div class=\"hint\">Required only when changing network. "
+            "<strong>Leave blank to keep the current one.</strong></div>"
             "<label for=\"host\">Sim PC address</label>"
             "<input id=\"host\" name=\"host\" value=\"");
   page += host;
@@ -110,7 +141,11 @@ void sendPage(const char* notice, bool noticeIsError) {
             "<input id=\"cred\" name=\"cred\" type=\"password\" placeholder=\"unchanged\">"
             "<div class=\"hint\">Gates this page and firmware updates. "
             "<strong>Leave blank to keep the current one.</strong></div>"
-            "<button type=\"submit\">Save</button></form>");
+            "<button type=\"submit\">Save</button></form>"
+            "<div class=\"hint\" style=\"margin-top:1rem\">If the device cannot join a network "
+            "after a change, it raises its setup access point and waits. Nothing is rolled back "
+            "and nothing is erased: a device cannot tell a wrong password from a router that is "
+            "rebooting, so it asks rather than guesses.</div>");
 
   // The soft-fault counters, since boot. Shown here because this is the page an operator opens
   // when something is wrong, and these four numbers are the first question anyone would ask.
@@ -166,8 +201,37 @@ void handleSave() {
   WebServer& s = web::server();
   String host = s.hasArg("host") ? s.arg("host") : String();
   String cred = s.hasArg("cred") ? s.arg("cred") : String();
+  String ssid = s.hasArg("ssid") ? s.arg("ssid") : String();
+  String wifiPass = s.hasArg("wifipass") ? s.arg("wifipass") : String();
 
   host.trim();
+  ssid.trim();
+
+  // A WiFi change is requested when the network name differs from the one currently joined, or a
+  // passphrase is supplied for the same network. UIF-PORTAL's bounds apply here too: at most 32
+  // octets of SSID, and a passphrase of 8 to 63 characters.
+  const bool networkChanged = ssid.length() > 0 && ssid != WiFi.SSID();
+  const bool wifiRequested  = networkChanged || wifiPass.length() > 0;
+
+  if (ssid.length() > 32) {
+    sendPage("A Wi-Fi network name is at most 32 characters.", true);
+    return;
+  }
+  if (wifiRequested && ssid.length() == 0) {
+    sendPage("A Wi-Fi network name is required to change the password.", true);
+    return;
+  }
+  // A new network with no passphrase would be an open network. Refused rather than guessed at:
+  // joining an open network by accident is a worse outcome than being told to type the password.
+  if (networkChanged && wifiPass.length() == 0) {
+    sendPage("Changing network needs its password. A blank password means "
+             "&lsquo;unchanged&rsquo;, which cannot apply to a different network.", true);
+    return;
+  }
+  if (wifiPass.length() > 0 && (wifiPass.length() < 8 || wifiPass.length() > 63)) {
+    sendPage("A Wi-Fi password is between 8 and 63 characters.", true);
+    return;
+  }
 
   if (!hostLooksValid(host.c_str())) {
     sendPage("The sim PC address is required, and may contain only letters, digits, dots, "
@@ -198,7 +262,22 @@ void handleSave() {
     return;
   }
 
-  sendPage("Saved. The device is restarting so the new address takes effect.", false);
+  // The WiFi change is staged, not applied. WiFi.begin() drops the current association the moment
+  // it is called, which would cut the connection this reply is travelling over.
+  if (wifiRequested) {
+    strncpy(g_pendingSsid, ssid.c_str(), sizeof(g_pendingSsid) - 1);
+    g_pendingSsid[sizeof(g_pendingSsid) - 1] = '\0';
+    strncpy(g_pendingPass, wifiPass.c_str(), sizeof(g_pendingPass) - 1);
+    g_pendingPass[sizeof(g_pendingPass) - 1] = '\0';
+    g_wifiPending = true;
+
+    sendPage("Saved. The device is restarting and will join that network. "
+             "If it cannot, it raises its setup access point and waits there - nothing is rolled "
+             "back, because it has no way to tell a wrong password from a router that is "
+             "rebooting.", false);
+  } else {
+    sendPage("Saved. The device is restarting so the new address takes effect.", false);
+  }
   g_rebootRequested = true;
 }
 
@@ -230,6 +309,19 @@ void begin(DeviceConfig& live) {
 void publishCounters(const net::Counters& counters) { g_counters = counters; }
 
 bool rebootRequested() { return g_rebootRequested; }
+
+void applyPendingWifi() {
+  if (!g_wifiPending) return;
+  g_wifiPending = false;
+
+  // Persisted by the call itself - the ESP32 core stores WiFi credentials in its own NVS - so the
+  // boot after the restart picks them up through the existing path. Nothing else is written, and
+  // nothing is kept as a "previous" to fall back to: a device that cannot tell a wrong password
+  // from a router rebooting has no basis for choosing between them, so it raises the portal and
+  // lets the person who knows decide.
+  WiFi.begin(g_pendingSsid, g_pendingPass);
+  memset(g_pendingPass, 0, sizeof(g_pendingPass));   // out of RAM as soon as it is handed over
+}
 
 }  // namespace configpage
 }  // namespace cyd

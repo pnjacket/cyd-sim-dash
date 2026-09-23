@@ -198,22 +198,30 @@ serving permanently unauthenticated would perpetuate the violation. Serving once
 violation to be repaired before any other change is accepted, is the only option that both rescues
 the device and leaves it compliant.
 
-## Known gap: the configuration page carries two fields, not four
+## The configuration page carries all four fields
 
-`UIF-CONFIG` specifies **the same four fields** as the portal — SSID, WiFi passphrase, sim-PC
-address and device credential. The page as built carries **two**: the address and the credential.
+Resolved by operator decision 2026-09-23. The page now changes the WiFi network as well as the
+sim-PC address and the credential.
 
-The two WiFi fields are not simply unimplemented; they raise a problem worth stating before anyone
-implements them. This page is served *over the WiFi network it would be changing*. On success the
-device leaves the network it is answering on, so the confirmation cannot be delivered; on failure it
-has left a working network for one it cannot join, and the only way back is the physical
-re-provisioning this page exists to avoid. WiFiManager also holds those credentials in its own NVS
-namespace rather than in `ENTITY-DEVICECONFIG`, so they are not this record's to write.
+The open question had been what to do when a network change fails, since the page is served *over
+the network it is changing*: a successful change cannot deliver its own confirmation, and a failed
+one leaves the device somewhere it cannot be reached. The obvious answer — verify and roll back — is
+the wrong one, and the operator's reasoning is worth recording verbatim in substance: **a device can
+never tell whether a connection failure is temporary or permanent, so it cannot safely roll back or
+erase anything.** A rollback triggered by a router rebooting would discard a setting that was
+correct.
 
-Recorded as a **gap against the contract**, not as a decision to narrow it — that call is the
-operator's. If the four-field form is kept, it needs a verification-and-rollback sequence of the
-kind the portal already has. If two fields are right, `UIF-CONFIG` should say so and explain why,
-and `JOURNEY-RECONFIG` should name re-provisioning as the route for a network change.
+So a failed join raises the captive portal and waits. That is not a new mechanism: it is exactly
+what an unprovisioned device already does, and what a device does when its stored network is
+unreachable at boot. The change adds a route into an existing recovery surface rather than a second
+one.
+
+Two consequences fell out of it. The credentials go to the platform's own WiFi store rather than
+into `ENTITY-DEVICECONFIG`, so the passphrase exists in one place rather than two — `SEC-STORAGE-PLAIN`
+already records it as recoverable with physical access, and a second copy would only widen that.
+And `WiFi.begin()` cannot be called from the request handler, because it drops the association the
+reply is travelling over; the change is staged and applied on the way to the restart.
+
 
 ## What the first end-to-end run on real hardware found
 

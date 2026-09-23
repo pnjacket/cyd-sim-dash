@@ -7,7 +7,7 @@ trigger: always
 in-scope-subaspects: [http-rpc-api-surface, event-surface, ui-entrypoints, error-model-catalog, versioning-compatibility]
 current-rung: contract-grade
 status: draft
-version: 0.6.0
+version: 0.7.0
 ---
 
 # Interfaces & Contracts — cyd-sim-dash
@@ -238,7 +238,7 @@ are form data-entry contracts.
 | ID | Surface | Owner · serves | Fields | Validation · empty semantics |
 |---|---|---|---|---|
 | `UIF-PORTAL` | Provisioning form, served from the device's own access point | `COMPONENT-WEB` · serves `CAP-PROVISION` | `ssid` · `wifiPassword` · `pcHost` · `credential` | All required; **empty is always a validation failure**, never a default. SSID at most 32 octets; passphrase 8–63 characters; host a dotted-quad or a DNS name of at most 253 characters. On submit the device runs the verification sequence below and persists only on success |
-| `UIF-CONFIG` | Configuration page, served on the device's LAN address behind the credential | `COMPONENT-WEB` · serves `CAP-RECONFIG` | the same four fields, pre-filled except secrets, plus soft-fault counters and an erase action | Same rules, with one labelled exception: a **blank secret field means leave unchanged**, stated on the form itself. Erase requires confirmation.<br><br>[GAP] **As built, the page carries two of the four fields** — the sim-PC address and the credential. The two WiFi fields are unresolved rather than skipped: the page is served *over the network it would change*, so a successful change cannot deliver its own confirmation and a failed one strands the device on a network it cannot join. They also live in WiFiManager's own NVS namespace rather than in `ENTITY-DEVICECONFIG`. Closing this needs either a verification-and-rollback sequence like the portal's, or a decision that a network change is re-provisioning — which would also amend `JOURNEY-RECONFIG` |
+| `UIF-CONFIG` | Configuration page, served on the device's LAN address behind the credential | `COMPONENT-WEB` · serves `CAP-RECONFIG` | the same four fields, pre-filled except secrets, plus soft-fault counters and an erase action | Same rules, with one labelled exception: a **blank secret field means leave unchanged**, stated on the form itself. Erase requires confirmation.<br><br>**On a failed network change the device raises the provisioning portal. It never rolls back and never erases.** Resolved by operator decision 2026-09-23; this replaces the gap marker that stood here. The argument is that a device *cannot distinguish a wrong passphrase from a router that is briefly down*, so any automatic rollback is a guess — and a guess that can discard a correct setting because the network happened to be rebooting. Raising the portal puts the choice in front of the person who knows which it was, and reuses the recovery surface an unprovisioned device already uses rather than adding a second mechanism.<br><br>The WiFi credentials are handed to the platform's own WiFi store rather than copied into `ENTITY-DEVICECONFIG`, so the passphrase exists in one place rather than two. Changing network requires its password: a blank one means *unchanged*, which cannot apply to a different network, and silently joining an open network would be a worse outcome than asking |
 
 **Portal verification sequence**, each step reporting its own failure and each with a stated bound.
 Nothing is persisted until all four succeed.

@@ -30,6 +30,10 @@ void publishCounters(const net::Counters& counters);
 /// True once a save has asked for a reboot, so the caller can honour it outside the handler.
 bool rebootRequested();
 
+/// Hand any staged WiFi change to the ESP32's WiFi store. Call immediately before restarting:
+/// WiFi.begin() drops the current association, so it cannot run inside a request handler.
+void applyPendingWifi();
+
 }  // namespace configpage
 }  // namespace cyd
 
