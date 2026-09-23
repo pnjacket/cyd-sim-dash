@@ -112,9 +112,17 @@ def scenario_sweep(stamp: int):
 
 
 def scenario_gears(stamp: int):
-    """Every gear in the domain, including the two-character truck cases. A2, U3."""
+    """Every gear in the domain, including the two-character truck cases. A2, U3.
+
+    Each gear is held for about a second and a half. The earlier pacing gave each one a fifth of a
+    second, which is fine for asserting that a value arrived and useless for the question this
+    scenario exists to answer: whether the glyph fits the region without clipping. A two-character
+    gear drops to a smaller face, and noticing that it is cramped takes longer than a glance.
+
+    RPM sits below the ramp throughout, so the bands stay black and nothing competes for attention.
+    """
     for g in ["R", "N"] + [str(n) for n in range(1, 19)]:
-        for _ in range(12):
+        for _ in range(90):                 # ~1.5 s each, ~30 s for the full domain
             yield frame(stamp, gear=g, rpm=7000.0)
             stamp += 16
 
@@ -124,7 +132,7 @@ def scenario_spotter(stamp: int):
     combos = [("none", "none"), ("one", "none"), ("none", "one"), ("one", "one"),
               ("two", "none"), ("none", "two"), (None, None)]
     for left, right in combos:
-        for _ in range(40):
+        for _ in range(90):                 # ~1.5 s each, long enough to check which side is lit
             yield frame(stamp, left=left, right=right, rpm=7000.0)
             stamp += 16
 
