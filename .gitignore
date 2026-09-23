@@ -1,0 +1,26 @@
+# transfer archives - a zip is how something got from one machine to another,
+# never a source artefact
+*.zip
+
+# build output
+build/
+plugin/dist/
+bin/
+obj/
+*.o
+*.elf
+*.bin
+__pycache__/
+*.pyc
+.venv/
+
+# captures are local fixtures, not source
+captures/**/*.ndjson
+
+# never commit secrets
+*.local
+secrets.*
+
+# SimHub's own assemblies, referenced at build time with Private="False" and NEVER redistributed.
+# POLICY-NO-REDISTRIBUTION-SIMHUB; check G3 asserts no release artefact contains them.
+plugin/lib/*.dll

@@ -1,0 +1,91 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/pnjacket/cyd-sim-dash/contracts/frame.schema.json",
+  "title": "EVT-FRAME",
+  "description": "Telemetry frame, PC to device. Projects ENTITY-FRAME. Every telemetry element is always present; null means the running title cannot supply it. Absence of a key is malformed, never unavailable.",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "protocolMajor",
+    "protocolMinor",
+    "status",
+    "titleId",
+    "stamp",
+    "gear",
+    "rpm",
+    "rampStartRpm",
+    "flashRpm",
+    "spotterLeft",
+    "spotterRight"
+  ],
+  "properties": {
+    "protocolMajor": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Same major means compatible. A differing major is refused whole."
+    },
+    "protocolMinor": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "A differing minor is tolerated; unknown fields are ignored. This is why additionalProperties is true."
+    },
+    "status": {
+      "enum": ["live", "noSim", "unsupportedTitle", "adapterFault"],
+      "description": "Frames are published whenever the plugin is alive, so silence means exactly one thing: the PC side is unreachable."
+    },
+    "titleId": {
+      "type": ["string", "null"],
+      "description": "The declaring adapter's title, or the unsupported title's identity. NOT a telemetry element: INV-STATUS-CONSISTENT exempts it, because naming the title is the entire point of unsupportedTitle."
+    },
+    "stamp": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Monotonic milliseconds within a producer run. Orders frames; does not measure latency, since the two clocks are not synchronised."
+    },
+    "gear": {
+      "type": ["string", "null"],
+      "pattern": "^(R|N|[1-9]|1[0-8])$",
+      "description": "R, N, or 1-18. A string, matching what SimHub itself supplies."
+    },
+    "rpm": {
+      "type": ["number", "null"],
+      "minimum": 0
+    },
+    "rampStartRpm": {
+      "type": ["number", "null"],
+      "minimum": 0,
+      "description": "Absolute RPM, already resolved by the adapter. For iRacing this is DriverCarSLFirstRPM."
+    },
+    "flashRpm": {
+      "type": ["number", "null"],
+      "minimum": 0,
+      "description": "Absolute RPM. For iRacing this is DriverCarSLShiftRPM - the sim's own 'shift now'."
+    },
+    "spotterLeft": {
+      "enum": ["none", "one", "two", null],
+      "description": "null means the title has no proximity source. 'none' means the track is clear. Collapsing the two is the failure this contract exists to prevent."
+    },
+    "spotterRight": {
+      "enum": ["none", "one", "two", null]
+    }
+  },
+  "allOf": [
+    {
+      "$comment": "INV-STATUS-CONSISTENT: a non-live frame carries every telemetry element as null. titleId is exempt.",
+      "if": {
+        "properties": { "status": { "not": { "const": "live" } } },
+        "required": ["status"]
+      },
+      "then": {
+        "properties": {
+          "gear": { "type": "null" },
+          "rpm": { "type": "null" },
+          "rampStartRpm": { "type": "null" },
+          "flashRpm": { "type": "null" },
+          "spotterLeft": { "type": "null" },
+          "spotterRight": { "type": "null" }
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,207 @@
+# Contract → code binding map
+#
+# The index drift detection reads: every contract ID that has a code realisation points at the
+# code site realising it. Populated during the build, one entry per slice, per Definition-of-Done
+# item 3. Empty before the first slice lands — which is correct, not a gap.
+#
+# Authoritative contract text lives in docs/. This file holds locators only and never restates a
+# contract. A locator that no longer resolves is drift, and drift is adjudicated, not auto-fixed.
+
+authored_against: v1.2.0
+product: cyd-sim-dash
+
+# Kinds deliberately excluded from this map, with the reason. Recorded so an empty section reads as
+# a decision rather than an omission:
+#   CAP       - realised transitively through SCREEN / API / EVT bindings
+#   JOURNEY   - transitive; asserted by the end-to-end suite
+#   PERSONA   - definitions, not behaviours
+#   SUCCESS   - manual by declared method
+#   ADR       - decisions; fitness-checked by R1-R10
+#   POLICY    - audits, not code
+#   DEP       - external; version pins enforced by the CI workflow
+#   E2E-STANDARD - a bar, gate-checked by Q2
+excluded_kinds: [CAP, JOURNEY, PERSONA, SUCCESS, ADR, POLICY, DEP, E2E-STANDARD]
+
+bindings:
+  # --- slice 3: wire contract -------------------------------------------------
+  # The wire contract has three realisations in three languages. That is exactly why it is built
+  # first and proven by shared fixtures rather than by each side's own tests.
+  EVT-FRAME:
+    - path: contracts/frame.schema.json
+      symbol: "#"
+    - path: firmware/src/display_state.h
+      symbol: cyd::Frame
+    - path: tools/replay.py
+      symbol: frame
+  EVT-REGISTRATION:
+    - path: contracts/registration.schema.json
+      symbol: "#"
+
+  # --- slice 4: display-state engine -------------------------------------------
+  ENTITY-DISPLAYSTATE:
+    - path: firmware/src/display_state.h
+      symbol: cyd::DisplayState
+  ENTITY-SPOTTERSTATE:
+    - path: firmware/src/display_state.h
+      symbol: cyd::Spotter
+  COMPONENT-STATE:
+    - path: firmware/src/display_state.cpp
+      symbol: cyd::derive
+  INV-GEAR-DOMAIN:
+    - path: firmware/src/display_state.cpp
+      symbol: cyd::gearInDomain
+  INV-RPM-NONNEG:
+    - path: firmware/src/display_state.cpp
+      symbol: cyd::validate
+  INV-RAMP-ORDER:
+    - path: firmware/src/display_state.cpp
+      symbol: cyd::validate
+    - path: tools/check_fixtures.py
+      symbol: relational_errors     # JSON Schema cannot compare two fields; this layer does
+  INV-STATUS-CONSISTENT:
+    - path: contracts/frame.schema.json
+      symbol: "#/allOf/0"
+    - path: firmware/src/display_state.cpp
+      symbol: cyd::validate
+  INV-VERSION-WHOLE:
+    - path: firmware/src/display_state.cpp
+      symbol: cyd::validate
+  INV-STAMP-ORDER:
+    - path: firmware/src/display_state.cpp
+      symbol: cyd::StampTracker::accept
+  INV-FRESH-RENDER:
+    - path: firmware/src/display_state.cpp
+      symbol: cyd::derive
+
+  # --- slice 8: device bring-up -------------------------------------------------
+  COMPONENT-RENDER:
+    - path: firmware/src/panel.cpp
+      symbol: cyd::panel::drawLink
+  SCREEN-BOOT:
+    - path: firmware/src/panel.cpp
+      symbol: cyd::panel::drawBoot
+  DEP-TFT-ESPI:
+    - path: firmware/src/tft_config.h
+      symbol: USER_SETUP_LOADED   # config lives here, never in the library folder
+
+  # --- slice 7: replay tool -----------------------------------------------------
+  COMPONENT-REPLAY:
+    - path: tools/replay.py
+      symbol: main
+
+  # --- slice 5: plugin core, adapter interface, iRacing adapter -----------------
+  COMPONENT-PLUGIN-CORE:
+    - path: plugin/src/core/FrameBuilder.cs
+      symbol: CydSimDash.Core.FrameBuilder.Build       # the status ladder and fault boundary
+    - path: plugin/src/simhub/CydSimDashPlugin.cs
+      symbol: CydSimDash.SimHubBridge.CydSimDashPlugin # the SimHub lifecycle shell only
+  COMPONENT-ADAPTER-IRACING:
+    - path: plugin/src/core/Adapters/IRacingAdapter.cs
+      symbol: CydSimDash.Core.Adapters.IRacingAdapter.BuildFrame
+  ADR-ADAPTER-MODULES:
+    - path: plugin/src/core/ITitleAdapter.cs
+      symbol: CydSimDash.Core.ITitleAdapter
+    - path: plugin/src/core/AdapterRegistry.cs
+      symbol: CydSimDash.Core.AdapterRegistry.Default  # the one place a title is named
+  CONFORMANCE-ADAPTER:
+    - path: plugin/test/ConformanceSuite.cs
+      symbol: CydSimDash.Test.ConformanceSuite
+  EVT-FRAME:
+    - path: plugin/src/core/Frame.cs
+      symbol: CydSimDash.Core.Frame.ToJson             # producer side; firmware owns the consumer
+
+  ENTITY-GAMEPROFILE:
+    - path: plugin/src/core/ShiftThresholds.cs
+      symbol: CydSimDash.Core.GameProfile
+    # ShiftThresholds.Resolve implements the shift-threshold fallback chain, which Domain & Data
+    # states as a RULE rather than an invariant and which therefore owns no contract ID. It is
+    # bound here, under the entity whose constants it consumes, rather than given an invented ID:
+    # a binding map that mints its own IDs stops being a map.
+    #
+    # Its first rung requires STRICTLY POSITIVE values, because a car with no configured shift
+    # lights reports zeros and zeros satisfy "ordered" under a non-strict reading - which would put
+    # the ramp start at 0 rpm and light the panel permanently. Mutation-testing the conformance
+    # suite found that guard was initially untested.
+    - path: plugin/src/core/ShiftThresholds.cs
+      symbol: CydSimDash.Core.ShiftThresholds.Resolve
+
+  # --- slice 6: publisher, device table, capture writer -------------------------
+  COMPONENT-PUBLISHER:
+    - path: plugin/src/core/UdpPublisher.cs
+      symbol: CydSimDash.Core.UdpPublisher
+  EVT-REGISTRATION:
+    - path: plugin/src/core/RegistrationParser.cs
+      symbol: CydSimDash.Core.RegistrationParser.TryParse   # consumer side
+    - path: plugin/src/core/DeviceTable.cs
+      symbol: CydSimDash.Core.DeviceTable.Register          # idempotency and the 6 s expiry
+  ENTITY-CAPTURE:
+    - path: plugin/src/core/CaptureWriter.cs
+      symbol: CydSimDash.Core.CaptureWriter.Write
+  OUT-CAPTURE:
+    - path: plugin/src/core/CaptureWriter.cs
+      symbol: CydSimDash.Core.CaptureWriter
+    - path: tools/replay.py
+      symbol: load_capture      # the reader half; the two agree via the contract, not each other
+  INV-CAPTURE-CLEAN:
+    - path: plugin/src/core/CaptureWriter.cs
+      symbol: CydSimDash.Core.CaptureWriter   # holds by construction: only a Frame is serialisable
+
+  # --- slice 10: receive path, registration, API-STATE ---------------------------
+  COMPONENT-NET:
+    - path: firmware/src/net.cpp
+      symbol: cyd::net::poll
+    - path: firmware/src/net.cpp
+      symbol: cyd::net::maintainRegistration   # producer side of EVT-REGISTRATION
+  API-STATE:
+    - path: firmware/src/state_json.cpp
+      symbol: cyd::stateapi::render            # the projection, host-compilable and unit-tested
+    - path: firmware/src/state_api.cpp
+      symbol: cyd::stateapi::begin             # the server that serves it
+  SEC-INPUT-BOUND:
+    - path: firmware/src/net.cpp
+      symbol: cyd::net::poll     # fixed 2 KB buffer; oversized drained without parsing
+  SEC-PARSER-FLOOR:
+    - path: THIRD-PARTY-NOTICES.md
+      symbol: ArduinoJson        # the mitigation is the version pin, not code
+  ERR-UNKNOWN-PATH:
+    - path: firmware/src/state_api.cpp
+      symbol: handleNotFound
+
+  # --- slices 11-14: the driving screen ------------------------------------------
+  SCREEN-DRIVING:
+    - path: firmware/src/panel.cpp
+      symbol: cyd::panel::drawDriving
+  CAP-GEAR:
+    - path: firmware/src/panel.cpp
+      symbol: cyd::panel::drawDriving   # auto-sizes: font 8 for one glyph, font 7 for two
+  CAP-SHIFT:
+    - path: firmware/src/display_state.cpp
+      symbol: cyd::flashOn              # the 3 Hz cadence, in the engine so it is host-testable
+    - path: firmware/src/panel.cpp
+      symbol: cyd::panel::rampColour    # the continuous blend
+  CAP-SPOTTER-LEFT:
+    - path: firmware/src/panel.cpp
+      symbol: cyd::panel::drawDriving   # bars painted last, so U6 holds by draw order
+  CAP-SPOTTER-RIGHT:
+    - path: firmware/src/panel.cpp
+      symbol: cyd::panel::drawDriving
+  SCREEN-LINK:
+    - path: firmware/src/panel.cpp
+      symbol: cyd::panel::drawLink      # text lines; the nine composed icons are still owed
+
+  # --- slice 15: configuration page ---------------------------------------------
+  COMPONENT-WEB:
+    - path: firmware/src/web.cpp
+      symbol: cyd::web::server      # one server; /state and / register against it
+  SCREEN-CONFIG:
+    - path: firmware/src/config_page.cpp
+      symbol: cyd::configpage::begin
+  UIF-CONFIG:
+    - path: firmware/src/config_page.cpp
+      symbol: handleSave            # blank secret means unchanged; empty host is a failure
+  CAP-RECONFIG:
+    - path: firmware/src/config_page.cpp
+      symbol: handleSave
+  SEC-ERASE-OVERWRITE:
+    - path: firmware/src/config.cpp
+      symbol: cyd::config::erase    # overwrites before deleting; S7 proves it by dumping flash

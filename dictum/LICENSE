@@ -1,0 +1,91 @@
+# Dictum — Licensing
+
+Dictum is licensed in **two parts, by content type**. Which license applies to
+a file depends on what the file *is*. The rule is by directory:
+
+> **Files under `skills/`, `agents/`, `templates/`, and `examples/` are MIT.**
+> **Every other file (the standard's prose) is CC BY 4.0.**
+
+---
+
+## 1. The standard (prose) — CC BY 4.0
+
+Copyright © 2026 David H. Jung and the Dictum contributors.
+
+The normative text of the Dictum standard is licensed under the **Creative
+Commons Attribution 4.0 International License (CC BY 4.0)**.
+
+- Full legal text: [`LICENSES/CC-BY-4.0.txt`](LICENSES/CC-BY-4.0.txt)
+- Human-readable summary: <https://creativecommons.org/licenses/by/4.0/>
+
+**Covered:** `STANDARD.md`, `GLOSSARY.md`, `failure-mode-catalog.md`,
+everything under `concerns/`, and the project's prose documentation
+(`README.md`, `TUTORIAL.md`, `ROADMAP.md`, `WORKFLOWS.md`, `CLAUDE.md`, `POSITIONING.md`).
+
+You are free to **share** (copy and redistribute in any medium or format) and
+**adapt** (remix, transform, and build upon the material) for any purpose,
+including commercially — provided you **give appropriate credit**, link to this
+license, and **indicate if changes were made**. You may not imply the project
+endorses you or your use.
+
+**One authoritative version — guaranteed by name and provenance, not by copyright.**
+CC BY intentionally lets anyone adapt or translate the text. What keeps a single
+canonical standard is not a copyright restriction but two other mechanisms:
+
+- the **name** "Dictum" and a version identifier are reserved to the official
+  text published from the canonical repository (see [`TRADEMARK.md`](TRADEMARK.md)); and
+- each release is **published from the canonical source with a checksum/signature**
+  (see [`RELEASES.md`](RELEASES.md)), so "Dictum v*X*" can be verified as authentic.
+
+An adaptation is therefore permitted, but — per CC BY — it must credit this
+source and mark its changes, and — per the name policy — it may not call itself
+"Dictum" or present itself as the official standard.
+
+**What this does not restrict:** *Applying* Dictum to document your own product
+is not even an adaptation of the text — you may use the method freely, write your
+own product's docs with it, ship products built from those docs, and build tools
+around it, with no obligation at all.
+
+## 2. The tooling, templates and examples (sample material) — MIT
+
+The Claude Code tooling, the fill-in templates, and the worked examples are
+licensed under the **MIT License**.
+
+- Full text: [`LICENSES/MIT.txt`](LICENSES/MIT.txt) (also copied into each of
+  `skills/`, `agents/`, `templates/`, and `examples/` so it travels with the
+  files when they are copied into your own repository).
+
+**Covered:** everything under `skills/`, `agents/`, `templates/`, and
+`examples/`. A worked example is sample material through and through — the
+sample doc set as much as the sample code — so the whole directory is MIT
+rather than split by file type.
+
+These are meant to be copied into your own repositories and adapted. MIT lets
+you do that with attribution and no further obligation.
+
+## 3. The name "Dictum" and release provenance
+
+Copyright and naming are **separate**. The CC BY license grants no rights in the
+**"Dictum"** name — and the project claims **no registered trademark** and does not
+intend to register one; the name is a **first-mover naming convention** (see
+[`TRADEMARK.md`](TRADEMARK.md)). What actually identifies the official standard is
+**provenance**: releases published from the canonical repository with a verifiable
+signature/checksum (see [`RELEASES.md`](RELEASES.md)). Under CC BY 4.0 (§2(b)) no
+trademark rights are licensed either way.
+
+## 4. Contributions
+
+Contributions are welcome and are accepted under the terms in
+[`CONTRIBUTING.md`](CONTRIBUTING.md). Prose contributions are made under the same
+**CC BY 4.0** as the standard (inbound = outbound); tooling and template
+contributions are under **MIT**. Both are affirmed by a Developer Certificate of
+Origin sign-off. Contributors retain copyright in their contributions.
+
+---
+
+### SPDX summary
+
+- Prose: `CC-BY-4.0`
+- Tooling, templates and examples (`skills/`, `agents/`, `templates/`, `examples/`): `MIT`
+
+When in doubt about a specific file, this document governs.

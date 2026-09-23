@@ -1,0 +1,13 @@
+cyd-sim-dash probe summary
+captured: 2026-09-22T19:14:41
+samples:  5219
+simhub:   1.0.0.0  (SimHubWPF.exe)
+
+games seen:             IRacing
+distinct Gear values:   1, 2, 3, 4, 5, 6, N, R
+
+# The rows research could not settle. If SpotterCarLeft only ever reads
+# 0 and 1, it flags presence; if 2 appears with two cars alongside, it counts.
+distinct SpotterCarLeft:  0, 1
+distinct SpotterCarRight: 0, 1
+distinct CarLeftRight:    0, 1, 2, 3

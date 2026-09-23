@@ -1,0 +1,126 @@
+name: CI
+
+# Definition-of-Done item 2 requires every off-device tier green AND the firmware compiling, from
+# the first slice onward. Check Q3 makes a green run the gate before any OTA push; V10 requires a
+# deliberate compile error to produce a red run, and the versions pinned here to match the ones the
+# documentation records.
+#
+# The pins below and docs/integrations-and-external-dependencies.md are the same facts. A green run
+# is what proves the table right rather than merely written down.
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+env:
+  ESP32_CORE_VERSION: 3.3.12
+  TFT_ESPI_VERSION: 2.5.43
+  ARDUINOJSON_VERSION: 7.4.3      # floor, not merely a pin - SEC-PARSER-FLOOR
+  WIFIMANAGER_VERSION: 2.0.17
+
+jobs:
+  contracts:
+    name: Wire contract - shared fixtures
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      - run: python -m pip install --quiet jsonschema
+      - name: Validate every fixture against the schemas and the relational invariants
+        run: python tools/check_fixtures.py
+
+  engine:
+    name: Display-state engine - unit tier
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and run
+        working-directory: firmware/test
+        run: make test
+
+  firmware:
+    name: Firmware compile - arduino-cli
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: arduino/setup-arduino-cli@v1
+      - name: Install the pinned ESP32 core
+        run: |
+          arduino-cli config init
+          arduino-cli config add board_manager.additional_urls \
+            https://espressif.github.io/arduino-esp32/package_esp32_index.json
+          arduino-cli core update-index
+          arduino-cli core install esp32:esp32@${ESP32_CORE_VERSION}
+      - name: Install the pinned libraries
+        run: |
+          arduino-cli lib install "TFT_eSPI@${TFT_ESPI_VERSION}"
+          arduino-cli lib install "ArduinoJson@${ARDUINOJSON_VERSION}"
+          arduino-cli lib install "WiFiManager@${WIFIMANAGER_VERSION}"
+      - name: Assert the pins match what the documentation records
+        run: |
+          grep -q "${ESP32_CORE_VERSION}" THIRD-PARTY-NOTICES.md
+          grep -q "${TFT_ESPI_VERSION}" THIRD-PARTY-NOTICES.md
+          grep -q "${ARDUINOJSON_VERSION}" THIRD-PARTY-NOTICES.md
+          grep -q "${WIFIMANAGER_VERSION}" THIRD-PARTY-NOTICES.md
+      - name: Compile the sketch
+        run: |
+          if [ -f firmware/firmware.ino ]; then
+            arduino-cli compile --fqbn esp32:esp32:esp32 firmware
+          else
+            echo "No sketch yet - firmware slices have not landed. Skipping compile."
+          fi
+
+  plugin:
+    name: SimHub plugin - adapter conformance
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+      - run: python -m pip install jsonschema
+
+      # The plugin CORE carries no SimHub reference, which is the whole reason this job can exist:
+      # SimHub's assemblies are not ours to redistribute (POLICY-NO-REDISTRIBUTION-SIMHUB) and are
+      # gitignored, so CI has no way to obtain them. Splitting the SimHub bridge into its own two
+      # files keeps every decision in code that builds anywhere.
+      #
+      # The Framework compiler ships with the Windows runner, so there is nothing to install.
+      - name: Build and run the adapter conformance suite
+        shell: pwsh
+        run: |
+          $csc = "C:\Windows\Microsoft.NET\Framework644.0.30319\csc.exe"
+          if (-not (Test-Path $csc)) { throw "Framework C# compiler not found at $csc" }
+          New-Item -ItemType Directory -Force plugin/build | Out-Null
+          $src = @(Get-ChildItem -Recurse plugin/src/core -Filter *.cs | % { $_.FullName }) +
+                 @(Get-ChildItem plugin/test -Filter *.cs | % { $_.FullName })
+          # A library invoked by reflection, not an .exe: Windows Application Control blocks
+          # freshly built unsigned executables on some developer machines, at load rather than at
+          # process start. Using the same path here keeps the local run and the gate identical.
+          & $csc /nologo /target:library /langversion:5 /out:plugin/build/Conformance.dll `
+              /reference:System.dll /reference:System.Core.dll $src
+          if ($LASTEXITCODE -ne 0) { throw "conformance suite failed to compile" }
+          $suite = [System.Reflection.Assembly]::LoadFrom((Resolve-Path "plugin/build/Conformance.dll"))
+          $entry = $suite.GetType("CydSimDash.Test.ConformanceSuite").GetMethod("Main")
+          $rc = $entry.Invoke($null, @(, [string[]]@("--emit", "plugin/build/emitted.ndjson")))
+          if ($rc -ne 0) { throw "CONFORMANCE-ADAPTER failed" }
+
+      # C4 crosses the language boundary deliberately: the C# suite has no JSON Schema validator
+      # and cannot acquire one, so the frames it emits are validated by the same code that
+      # validates the shared fixtures. Otherwise C4 would only be a spelling test.
+      - name: Validate emitted frames against the wire contract
+        run: python tools/check_adapter_output.py plugin/build/emitted.ndjson
+
+      # OUT-CAPTURE is written in C# and read in Python. They agree because both conform to the
+      # same message contract, and this is the only step that actually proves it - it feeds a
+      # capture from the real writer through the replay tool's real loader.
+      - name: Capture round-trips between the C# writer and the Python reader
+        run: python tools/check_capture_roundtrip.py plugin/build/emitted-capture.ndjson
+
+      # Check R2 - the adapter boundary. Searching the plugin core for a sim name must find
+      # nothing; every such reference belongs in an adapter or in the registry.
+      - name: R2 - adapter boundary holds
+        shell: pwsh
+        run: python tools/check_adapter_boundary.py

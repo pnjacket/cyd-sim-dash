@@ -1,0 +1,12 @@
+{
+  "protocolMajor": 1,
+  "protocolMinor": 0,
+  "titleId": "iracing",
+  "stamp": 41250,
+  "gear": "4",
+  "rpm": 7200,
+  "rampStartRpm": 7800,
+  "flashRpm": 8400,
+  "spotterLeft": "one",
+  "spotterRight": "none"
+}

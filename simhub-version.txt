@@ -1,0 +1,13 @@
+# SimHub version this product is built and tested against (DEP-SIMHUB).
+#
+# NOT YET RECORDED.
+#
+# The obvious source is wrong: SimHub's assemblies all report ProductVersion 1.0.0.0, so reading
+# the DLLs gives a number that looks authoritative and means nothing. Recording it would have been
+# worse than recording nothing.
+#
+# The probe plugin reads the host process's own file version instead, which is the real one. It
+# lands in the "simhub:" line of Documents\cyd-probe\summary.txt on the rig, and gets copied here
+# when the mapping capture comes back.
+#
+# Closed by slice 1, alongside X1.

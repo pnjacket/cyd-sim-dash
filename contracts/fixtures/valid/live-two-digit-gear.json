@@ -1,0 +1,13 @@
+{
+  "protocolMajor": 1,
+  "protocolMinor": 0,
+  "status": "live",
+  "titleId": "iracing",
+  "stamp": 41250,
+  "gear": "12",
+  "rpm": 1500,
+  "rampStartRpm": 1400,
+  "flashRpm": 1650,
+  "spotterLeft": "one",
+  "spotterRight": "none"
+}

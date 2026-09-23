@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/pnjacket/cyd-sim-dash/contracts/registration.schema.json",
+  "title": "EVT-REGISTRATION",
+  "description": "Device announcement and keepalive, device to PC, every 2 s. The publisher records the source address and forgets a device after 6 s of silence - three missed keepalives.",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["protocolMajor", "protocolMinor", "deviceId", "firmwareVersion"],
+  "properties": {
+    "protocolMajor": { "type": "integer", "minimum": 0 },
+    "protocolMinor": { "type": "integer", "minimum": 0 },
+    "deviceId": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{12}$",
+      "description": "Lowercase hex of the six-byte station MAC, OUI byte first, no delimiter. Derived, never stored. Identifying - excluded from captures."
+    },
+    "firmwareVersion": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Carried so a version mismatch is diagnosable from the PC side, at the moment the panel is least able to help."
+    }
+  }
+}

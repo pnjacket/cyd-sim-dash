@@ -1,0 +1,95 @@
+# Product-Profile Manifest — cyd-sim-dash
+# Single machine-readable source of truth for this doc set (Dictum STANDARD Part 7).
+# docs/README.md is DERIVED from this file. Implementation status is tracked separately
+# by Delivery Process, never here.
+
+product: cyd-sim-dash
+packaging: per-concern
+authoring_granularity: fine
+
+authored_against: v1.2.0
+standard_source: https://github.com/pnjacket/dictum
+
+# Traits captured at intake (2026-09-21 interview). Facts about the product — recorded
+# honestly even where the concern they would switch on has been scoped out; the resulting
+# risk/scope mismatches are the advisory warnings noted under `scope_warnings` below.
+traits:
+  interface_kinds: [events, ui]     # UDP telemetry frames (events) + on-glass UI and setup portal
+  interactive_ui: true              # device screens + captive-portal setup
+  deployed_service: false           # no infrastructure; a local PC plugin and a device on the LAN
+  persists_data: true               # device configuration in NVS; captured telemetry files on the PC
+  third_party_deps: true            # SimHub + its plugin SDK, ESP32 Arduino core, display/JSON/portal libraries, three sims
+  perf_scale_needs: true            # a real glass-to-flash latency need exists (concern deferred by operator decision)
+  multi_locale: false
+  commercial: false                 # non-commercial, but publicly distributable under MIT
+  regulated: false
+  security_risk: [secrets, network] # WiFi credentials at rest; LAN-exposed UDP listener and OTA update path
+  code_authorship: model-authored   # ⇒ Governance source-provenance detection pass is owed
+
+concerns:
+  product-and-requirements:
+    in_scope: true
+    current_rung: contract-grade
+    target_rung: contract-grade
+    out_of_scope_subaspects: [market-competitive-context, stakeholders-decision-makers]
+  domain-and-data:
+    in_scope: true
+    current_rung: contract-grade
+    target_rung: contract-grade
+    out_of_scope_subaspects: [consistency-transactions, reference-seed-data]
+  architecture:
+    in_scope: true
+    current_rung: contract-grade
+    target_rung: contract-grade
+    out_of_scope_subaspects: [scalability-resilience-patterns]
+  interfaces-and-contracts:
+    in_scope: true
+    current_rung: contract-grade
+    target_rung: contract-grade
+    out_of_scope_subaspects: [cli-surface, library-sdk-surface, pagination-filtering-rate-limit-conventions]
+  quality-and-testing:
+    in_scope: true
+    current_rung: contract-grade
+    target_rung: contract-grade
+    out_of_scope_subaspects: [test-stage-fidelity-mapping]
+  delivery-process:
+    in_scope: true
+    current_rung: contract-grade
+    target_rung: contract-grade
+    out_of_scope_subaspects: [external-tracker-binding]
+  security-and-privacy:
+    in_scope: true
+    current_rung: contract-grade
+    target_rung: contract-grade
+    out_of_scope_subaspects: [session-management]
+  governance-and-compliance:
+    in_scope: true
+    current_rung: contract-grade
+    target_rung: contract-grade
+    out_of_scope_subaspects: [data-handling-policy, audit-requirements, compliance-framework-mapping, records-retention-data-residency, consent-management]
+  user-experience:
+    in_scope: true
+    current_rung: contract-grade
+    target_rung: contract-grade
+    out_of_scope_subaspects: [component-reuse-design-system-binding, responsive-layout]
+  integrations-and-external-dependencies:
+    in_scope: true
+    current_rung: specified
+    target_rung: contract-grade
+    out_of_scope_subaspects: []
+
+  operations-and-infrastructure:          { in_scope: false }   # absent: no deployed infrastructure exists
+  observability-and-monitoring:           { in_scope: false }   # deferred: no diagnostics surface in v1
+  performance-and-scalability:            { in_scope: false }   # deferred: operator decision, 2026-09-21
+  accessibility-and-internationalization: { in_scope: false }   # deferred (a11y) / absent (i18n)
+  business-and-legal:                     { in_scope: false }   # deferred: see README - both halves of the commercial/distributed trigger addressed
+
+# Advisory only (STANDARD Part 9) — recorded, blocking nothing.
+scope_warnings:
+  - "interactive_ui: true with accessibility-and-internationalization fully out of scope."
+  - "perf_scale_needs: true with performance-and-scalability fully out of scope; no latency target is stated or tested anywhere in the set."
+  - "security_risk includes secrets and network while governance's data-handling-policy is scoped out (deferred): the classification tags exist and their policy layer is calibrated out rather than absent."
+
+reference_granularity: entity
+tombstones: {}
+staleness: {}
