@@ -46,7 +46,7 @@ Three sittings need the rig, and they are the critical path. Everything else run
 | 16 | OTA and the update window | full | `SEC-OTA-WINDOW`, `SEC-OTA-IMAGE`, `ADR-ARDUINO-OTA` | no | ☐ |
 | 17 | Security and error-catalogue verification | verification-only | every `ERR-*`, `PATTERN-ERROR`, `SEC-*` battery, `Q8`, `S1`–`S12` | no | ☐ |
 | 18 | `E2E-STANDARD` conformance and the five journeys | verification-only | `E2E-STANDARD`, every `JOURNEY-*` | no | ☐ |
-| 19 | Live iRacing integration | full | `CAP-PUBLISH`, `A8`, `X1` | **yes** | ☐ |
+| 19 | Live iRacing integration | full | `CAP-PUBLISH`, `A8`, `X1` | **yes** | ◐ plugin packaged for the rig 2026-09-23 |
 | 20 | Documentation, notice, provenance pass, v1 release | cross-cutting | `G1`, `G3`, `G5`, `G7`, `V5`, `V6` | no | ☐ |
 | 21 | Adopter unaided-setup trial | verification-only | `SUCCESS-SETUP-UNAIDED`, `A10` | no | ☐ |
 | 22 | Drive it and record the criteria | verification-only | every `SUCCESS-*`, `A1` | **yes** | ☐ |
