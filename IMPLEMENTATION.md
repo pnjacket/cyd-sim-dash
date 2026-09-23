@@ -325,6 +325,38 @@ The lesson is the ordering: two reasoned fixes changed nothing the operator coul
 first measurement pointed straight at the answer. The panel now reports `lastDrawUs`, `worstDrawUs`
 and `drawCount` through `API-STATE` so the next question of this kind starts with a number.
 
+## The gear glyph: three faults in one line of code
+
+The renderer chose its font as `(strlen(glyph) > 1) ? 7 : 8`. Found by the operator looking at the
+panel on 2026-09-22, and every one of the three was invisible to the 42 end-to-end checks, because
+all of those read `API-STATE` and the *state* was correct throughout. The glyph was right in the
+frame, right in the display state, right over HTTP, and wrong on the glass.
+
+**One: two typefaces.** Fonts 7 and 8 are different faces, so `9` and `10` did not look like the
+same instrument. A display that changes style mid-shift reads as a fault rather than as data.
+
+**Two: the `1` sat on the right.** Both are seven-segment faces, and a seven-segment `1` lights
+only the two right-hand segments of its cell. That is correct for a real seven-segment display and
+wrong here: in `18` it left a gap on the left and the pair looked shoved against the edge.
+
+**Three, and the worst: `R` and `N` did not render at all.** TFT_eSPI's fonts 7 and 8 contain
+`1234567890:-.` and nothing else. Two of the twenty values in the gear domain — and the two a driver
+most needs to be certain of — drew nothing. There was no error, no warning, no failing check; the
+library simply has no glyph and draws nothing.
+
+All three are fixed by drawing everything in one proportional face, `FreeSansBold24pt7b`, sized
+against the space the bands leave.
+
+### The check already said so
+
+`U3` reads: *"Every gear in the domain, **including `N`, `R`** and a two-character value, renders
+within the gear region without clipping."*
+
+The check was written correctly, named the exact failing cases, and had simply never been run — it
+is a manual check, and nothing but a person looking at the panel can execute it. That is the
+argument for the manual gate stated better than the doc set states it: the specification was right,
+the code was wrong, and only the glass could tell the difference.
+
 ## Two contracts with no natural home
 
 `SEC-LAN-TRUSTED` and `SEC-NO-PERSONAL-DATA` are postures rather than behaviours, with no check and

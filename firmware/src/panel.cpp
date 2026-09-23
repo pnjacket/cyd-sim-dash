@@ -242,28 +242,47 @@ void drawDriving(const DisplayState& state, uint32_t nowMs) {
     tft.startWrite();
     tft.fillRect(kGearX, kBandHeight, kGearWidth, kHeight - 2 * kBandHeight, kBlack);
     if (haveGlyph) {
-      // Font 8 is the large seven-segment face; a two-character gear drops to font 7 so it fits.
-      // The size multiplier is chosen against the space actually available rather than hard-coded,
-      // so U3 - every gear in the domain rendering without clipping - holds by construction rather
-      // than by my having measured one glyph once.
-      const uint8_t font = (strlen(state.gearGlyph) > 1) ? 7 : 8;
-      const int available = kHeight - 2 * kBandHeight;
-      const int naturalH = tft.fontHeight(font);
-      const int naturalW = tft.textWidth(state.gearGlyph, font);
+      // ONE proportional face for every gear in the domain. This replaces a pair of seven-segment
+      // fonts and fixes three separate faults at once:
+      //
+      //   - Fonts 7 and 8 are different typefaces, so a one-character gear and a two-character one
+      //     did not look like the same display. Switching between them mid-shift is exactly the
+      //     kind of change that reads as a fault rather than as information.
+      //
+      //   - A seven-segment "1" lights only the two right-hand segments of its cell, which is
+      //     correct for a real seven-segment display and wrong here: in "18" it leaves a gap on the
+      //     left and the pair looks shoved against the right edge.
+      //
+      //   - **Neither font contains R or N.** TFT_eSPI's fonts 7 and 8 carry "1234567890:-." and
+      //     nothing else, so reverse and neutral - two of the twenty values in the gear domain, and
+      //     the two a driver most needs to be certain of - drew nothing at all. Confirmed on the
+      //     glass by the operator on 2026-09-22.
+      //
+      // FreeSansBold has the full character set and proportional metrics, so R, N and every digit
+      // render in one style and a "1" sits where a "1" should.
+      tft.setFreeFont(&FreeSansBold24pt7b);
+      tft.setTextColor(kWhite, kBlack);
+      tft.setTextDatum(MC_DATUM);
 
+      // Sized against the space actually available rather than hard-coded, so U3 - every gear in
+      // the domain rendering without clipping - holds by construction rather than because one
+      // glyph was measured once. fontHeight() and textWidth() both account for the multiplier.
+      const int availableH = kHeight - 2 * kBandHeight - 8;
+      const int availableW = kGearWidth - 16;
       uint8_t size = 1;
-      for (uint8_t candidate = 4; candidate >= 2; --candidate) {
-        if (naturalH * candidate <= available - 8 && naturalW * candidate <= kGearWidth - 16) {
+      for (uint8_t candidate = 4; candidate >= 1; --candidate) {
+        tft.setTextSize(candidate);
+        if (tft.fontHeight() <= availableH && tft.textWidth(state.gearGlyph) <= availableW) {
           size = candidate;
           break;
         }
       }
 
       tft.setTextSize(size);
-      tft.setTextColor(kWhite, kBlack);
-      tft.setTextDatum(MC_DATUM);
-      tft.drawString(state.gearGlyph, kGearX + kGearWidth / 2, kHeight / 2, font);
-      tft.setTextSize(1);        // every other screen assumes the default
+      tft.drawString(state.gearGlyph, kGearX + kGearWidth / 2, kHeight / 2);
+
+      tft.setTextSize(1);        // every other screen assumes the defaults
+      tft.setFreeFont(nullptr);
     }
     tft.endWrite();
   }
