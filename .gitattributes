@@ -1,0 +1,16 @@
+# Line endings are LF in the repository and LF in the working tree, on every platform.
+#
+# This is not tidiness. With autocrlf left to itself, a checkout on Windows rewrites tools/ota.sh
+# and firmware/test/Makefile with CRLF, and both then fail in ways that do not name the cause: bash
+# reports a command not found with an invisible carriage return in it, and make reports a missing
+# separator. Three of the four CI jobs run on Linux, so the failure would also only ever appear
+# locally.
+* text=auto eol=lf
+
+# Binaries, left alone.
+*.png binary
+*.jpg binary
+*.bin binary
+*.elf binary
+*.dll binary
+*.zip binary
