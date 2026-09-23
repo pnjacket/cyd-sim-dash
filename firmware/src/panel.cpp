@@ -48,6 +48,40 @@ uint16_t blend(uint16_t a, uint16_t b, float t) {
   return static_cast<uint16_t>((r << 11) | (g << 5) | bl);
 }
 
+// The text multiplier for the gear glyph. Computed once, then used for every gear.
+//
+// Two things were making the glyph smaller than it needed to be.
+//
+// First, fontHeight() on a GFX font returns yAdvance - the whole line box, sized for ascenders and
+// descenders that a gear glyph never uses. A digit's ink is roughly 62% of that. Sizing against the
+// line box reserved space for parts of the font that are never drawn, and cost a whole multiplier
+// step. The fraction is an approximation of cap height over yAdvance for the Free* faces; it is
+// used only to choose a size, and the result is confirmed on the glass.
+//
+// Second, sizing per-glyph would make a one-character gear larger than a two-character one, so the
+// display would change size as well as content while shifting. Sizing once against the WIDEST value
+// in the domain gives every gear the same size, which is what an instrument should do - and it
+// makes U3 hold for the whole domain rather than for whichever value happened to be on screen.
+uint8_t gearTextSize() {
+  static uint8_t cached = 0;
+  if (cached != 0) return cached;
+
+  const char* widest = "18";                   // the widest value the gear domain contains
+  const int availableH = kHeight - 2 * kBandHeight - 8;
+  const int availableW = kGearWidth - 16;
+
+  cached = 1;
+  for (uint8_t candidate = 6; candidate >= 1; --candidate) {
+    tft.setTextSize(candidate);
+    const int inkH = (tft.fontHeight() * 62) / 100;
+    if (inkH <= availableH && tft.textWidth(widest) <= availableW) {
+      cached = candidate;
+      break;
+    }
+  }
+  return cached;
+}
+
 }  // namespace
 
 uint16_t rampColour(float position) {
@@ -264,21 +298,7 @@ void drawDriving(const DisplayState& state, uint32_t nowMs) {
       tft.setTextColor(kWhite, kBlack);
       tft.setTextDatum(MC_DATUM);
 
-      // Sized against the space actually available rather than hard-coded, so U3 - every gear in
-      // the domain rendering without clipping - holds by construction rather than because one
-      // glyph was measured once. fontHeight() and textWidth() both account for the multiplier.
-      const int availableH = kHeight - 2 * kBandHeight - 8;
-      const int availableW = kGearWidth - 16;
-      uint8_t size = 1;
-      for (uint8_t candidate = 4; candidate >= 1; --candidate) {
-        tft.setTextSize(candidate);
-        if (tft.fontHeight() <= availableH && tft.textWidth(state.gearGlyph) <= availableW) {
-          size = candidate;
-          break;
-        }
-      }
-
-      tft.setTextSize(size);
+      tft.setTextSize(gearTextSize());
       tft.drawString(state.gearGlyph, kGearX + kGearWidth / 2, kHeight / 2);
 
       tft.setTextSize(1);        // every other screen assumes the defaults

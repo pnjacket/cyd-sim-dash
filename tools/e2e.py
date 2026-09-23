@@ -118,6 +118,29 @@ def wait_for(device: str, predicate, timeout: float = 6.0) -> dict:
     return last
 
 
+def device_is_quiet(device: str, settle: float = 3.0) -> bool:
+    """True when nothing else is feeding this device.
+
+    Checked by watching rather than asking: if the reported frame age keeps resetting while we send
+    nothing, someone else is sending. The staleness threshold is two seconds, so waiting a little
+    over that and finding the device still fed is conclusive.
+    """
+    try:
+        time.sleep(settle)
+        after = state(device)
+    except Exception:
+        return True          # unreachable is a different failure, reported elsewhere
+
+    age = after.get("lastFrameAgeMs")
+    link = after.get("linkState")
+
+    # A device nobody is feeding reports a stale link, or an age past the threshold, or has never
+    # seen a frame at all.
+    if age is None:
+        return True
+    return age >= 2000 or link in ("stale", "unreachable", "drivingPending", "joining", "unresolved")
+
+
 # ---------------------------------------------------------------------------
 
 
@@ -332,6 +355,20 @@ def main() -> int:
     except Exception as exc:
         print(f"cannot reach the device at {args.device}: {exc}")
         print("check it is powered, on the network, and running 0.2.0 or later")
+        return 2
+
+    if not device_is_quiet(args.device):
+        print("ABORTING: something else is already sending frames to this device.")
+        print()
+        print("  A second sender is almost invisible and produces failures that look like real")
+        print("  defects. Two sources have independent stamp bases, so the device rejects about")
+        print("  half of everything as out-of-order, and assertions fail against firmware that is")
+        print("  working perfectly. This cost three separate misdiagnoses before it was spotted.")
+        print()
+        print("  Stop everything first:   tools/drive.ps1 -StopOnly")
+        print()
+        print("  Note that `pkill -f replay.py` and `kill <pid>` do NOT work here: neither stops a")
+        print("  native Windows Python process, and both report success while it keeps sending.")
         return 2
 
     selected = args.only or list(TESTS)
