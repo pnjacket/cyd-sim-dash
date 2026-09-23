@@ -22,8 +22,8 @@ built in a single layer.
 
 | `CAP-###` | Completing slice | Built | Verified (stage) | Proof |
 |---|---|:---:|---|---|
-| `CAP-GEAR` | 11 | ☐ | — | `A2` · `U2` · `U3` · E2E replay |
-| `CAP-SHIFT` | 12 | ☐ | — | `A3` · `U4` · `U5` · E2E replay |
+| `CAP-GEAR` | 11 | ✅ | **on-rig** | `U2` and `U3` passed 2026-09-23 · E2E replay green · `A2` still wants the live sim |
+| `CAP-SHIFT` | 12 | ✅ | **on-rig** | `U4` passed 2026-09-23 · `U5` accepted by judgement, tolerance unverified · `A3` still wants the live sim |
 | `CAP-SPOTTER-LEFT` | 13 | ✅ | **on-rig** | `U7` passed 2026-09-22 · `X2` all seven enum rows · `A4` and `X10` still want a live race |
 | `CAP-SPOTTER-RIGHT` | 13 | ✅ | **on-rig** | `U7` passed 2026-09-22 · `X2` all seven enum rows · `A4` and `X10` still want a live race |
 | `CAP-LINKSTATE` | 14 | ☐ | — | `A5` · `A6` · `U8` · `I13` |
@@ -45,8 +45,8 @@ built in a single layer.
 | 8 | Device bring-up: panel and boot screen | full | ✅ | **on-rig** | manual pass done 2026-09-21: border, corner colours and white-on-black all correct at 320x240. `U9` satisfied |
 | 9 | Configuration store and provisioning portal | full | ◐ | off-device | portal raises, collects WiFi + host + credential, persists to NVS and survives reboot. Verification sequence and empty-field rejection still owed |
 | 10 | Receive path, registration, handoff, `API-STATE` | full | ✅ | **on-rig** | 42/42 end-to-end checks pass against the panel, 2026-09-22: frames render, malformed input is counted, `I6` version mismatch and recovery, staleness, `ERR-UNKNOWN-PATH`. `S8` amended against measurement — see Security |
-| 11 | Gear | full | ◐ | **on-rig, logically** | The glyph follows the frame, asserted through `API-STATE`. Enlarged and auto-sized against the space the bands leave. The `gears` scenario was driven on the panel 2026-09-22 and all 20 gears rendered including the nine two-character cases; **`U3` awaits the operator's verdict on clipping**, and `U2` is now simpler — the glyph sits on permanent black |
-| 12 | Shift ramp and flash | full | ◐ | **on-rig** | All three phases confirmed on the panel. Reworked twice against operator feedback and measurement: bands rather than a full-field flash, four discrete colour stops rather than a blend, 80 MHz SPI. Draw time **13.6 ms → 4.3 ms**, redraws **~60/s → 3.6/s**. Operator accepts the residual tearing on the flash. `U5`'s 3 Hz rate still wants the slow-motion measurement |
+| 11 | Gear | full | ✅ | **on-rig** | **`U3` passed by operator observation 2026-09-23**: every gear in the domain renders without clipping, including `N`, `R` and the two-character cases. Drawn in one proportional face and sized once against the widest value, so every gear is the same size. `U2` is satisfied by construction — the glyph sits on permanent black |
+| 12 | Shift ramp and flash | full | ✅ | **on-rig** | All three phases confirmed. Reworked twice against operator feedback and measurement: bands rather than full-field, four discrete stops rather than a blend, 80 MHz SPI. Draw time **13.6 ms → 4.3 ms**, redraws **~60/s → 3.6/s**. Operator accepts the residual tearing and **waived `U5`'s slow-motion measurement** 2026-09-23, judging the rate acceptable by eye — so the ± 10 % tolerance is unverified by choice. `U4` passed with the discrete stops |
 | 13 | Edge bars and composition | full | ✅ | **on-rig** | **`U6` and `U7` passed by operator observation 2026-09-22**, driven by the `composition` and `spotter` scenarios: a lit bar stays solid white through both flash phases, and each side lights the correct bar. Both-sides-at-once was rendered and confirmed here — the case a real track cannot stage on demand. The bands are confined to the gear region, so `U6` now holds by geometry as well as by draw order |
 | 14 | Link-state screen | full | ◐ | **on-rig, partly** | `unresolved`, `unreachable`, `stale`, `versionMismatch` and the null-while-driving case all observed on the panel. The nine composed icons are still owed |
 | 15 | Configuration page, reconfiguration, erase | full | ◐ | **on-rig** (save path) | Used in anger: the page set the sim-PC address on a device that had none, closing the dead-end without re-provisioning. Erase, `S4`, `S6` and `S7` still owed |
