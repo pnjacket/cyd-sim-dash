@@ -260,6 +260,38 @@ Domain & Data.
   improvement in shift feel and needs no wire change — the adapter would simply resolve different
   absolute values per gear.
 
+### The `CarLeftRight` enum, corroborated by research 2026-09-23
+
+The adapter reads iRacing's raw enum rather than SimHub's computed spotter fields, and rows `4..6`
+of that derivation rested on the published SDK rather than on anything observed. A search for prior
+art was cheaper than waiting for a race, and it moved three things.
+
+**The enum's definition is confirmed by three independent sources**, including iRacing's own
+`irsdk_defines.h` and two long-standing third-party readers (CrewChief, SIMRacingApps):
+
+    0 LROff · 1 LRClear · 2 LRCarLeft · 3 LRCarRight
+    4 LRCarLeftRight "there are cars on each side"
+    5 LR2CarsLeft · 6 LR2CarsRight
+
+**The derivation this product uses is the one the community uses.** Independent write-ups describe
+detecting a car on the left by testing the value against `2, 4, 5` — which is exactly
+`left = {2, 4, 5}` as specified above, arrived at separately. That is corroboration of the *mapping*,
+which is the part that was assumed.
+
+**The stuck-at-a-constant concern is real, reported, and did not reproduce here.** SimHub issue
+#1395 (August 2023) reports `CarLeftRight` pinned at `1` while iRacing's voice spotter worked
+correctly; it was closed as `gameLimitation` rather than a SimHub defect. That report is what
+originally argued for preferring SimHub's computed fields. Against it: the capture of 2026-09-22
+tracked the enum correctly across 5,219 samples, and check `A4` passed on the rig on 2026-09-23 with
+the live spotter. So the failure exists somewhere, but not in this setup — and it is worth knowing
+that if the bars ever go permanently dark while the in-sim voice spotter still calls, this is the
+first thing to suspect and it is not a fault in this product.
+
+**What research could not settle: whether value `4` is ever actually emitted.** No source reports
+observing it; every source only documents that it is defined. `X10` therefore stands, but it is now
+a narrower question — not "is this derivation right" but "does iRacing raise the both-sides value in
+a real race".
+
 ## Dependencies & Cross-references
 
 | Consumed from | What |
@@ -387,5 +419,5 @@ information* from *clear*, and so does this product.
 | X7 | The replay tool drives a device through a full captured lap with SimHub, the plugin and the sim all shut, and the device's behaviour is indistinguishable from live | fidelity substitution |
 | X8 | The README lists an exact version for the ESP32 core and each of the three device libraries, and a clean machine following it produces a working panel | version pinning by documentation |
 | X9 | The recorded SimHub tested version matches the one the plugin was built against | `DEP-SIMHUB` version policy |
-| X10 | **In a real race**, running side by side lights the bar on the correct side, and being between two cars lights **both** bars. Satisfied by operator observation during ordinary racing rather than by a staged scenario — rows `4..6` of the enum are impractical to produce deliberately, and waiting for a staged capture would block the build indefinitely. A negative observation falsifies the source-selection decision of 2026-09-22 and is reported as a bug against this check | the one assumption in the spotter derivation |
+| X10 | **In a real race**, running side by side lights the bar on the correct side, and being between two cars lights **both** bars. Satisfied by operator observation during ordinary racing rather than by a staged scenario — rows `4..6` of the enum are impractical to produce deliberately, and waiting for a staged capture would block the build indefinitely. A negative observation falsifies the source-selection decision of 2026-09-22 and is reported as a bug against this check | the one assumption in the spotter derivation.<br><br>**Narrowed by research 2026-09-23**, not closed: the enum's definition is corroborated by iRacing's own SDK header and two independent third-party readers, and the `left = {2,4,5}` derivation matches what other projects arrived at separately. What remains unobserved is only whether iRacing *emits* value `4` in a real race — the specification is no longer the uncertain part | the one assumption in the spotter derivation |
 

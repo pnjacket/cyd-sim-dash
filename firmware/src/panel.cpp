@@ -85,23 +85,33 @@ uint8_t gearTextSize() {
 }  // namespace
 
 uint16_t rampColour(float position) {
-  // Four discrete stops rather than a continuous blend.
+  // Discrete stops rather than a continuous blend, and deliberately few of them.
   //
   // A blend changes colour on every RPM step, and every colour change is a full band repaint - one
-  // visible sweep across the glass. Four stops means at most four repaints across the entire ramp,
-  // however fast the engine is revving, which is the difference between a panel that is constantly
-  // mid-sweep and one that changes a handful of times.
+  // visible sweep across the glass. Discrete stops cap the repaints across the entire ramp however
+  // fast the engine is revving, and discrete stages are what a driver reads peripherally anyway.
   //
-  // It also reads more like a shift light than a wash does: discrete stages are what a driver is
-  // used to reading peripherally, and the exact shade between two stages carried no information a
-  // driver could act on anyway.
+  // The stops below were retuned on the rig on 2026-09-23, against how the window actually behaves
+  // in a car rather than how it looks on a bench. Three things came out of driving it:
   //
-  // Chosen by the operator on 2026-09-22; it amends U4, which previously required a continuous
-  // blend with no visible banding. The banding is now the point.
-  if (position < 0.25f) return kGreen;
-  if (position < 0.50f) return kYellow;
-  if (position < 0.75f) return kAmber;
-  return kRed;
+  //   - **The bottom of the window should be black.** The ramp window is narrow and sits near the
+  //     top of the rev range, so in ordinary driving the revs are almost always inside it. Starting
+  //     at green meant the bands were lit essentially all the time, and a cue that is always on is
+  //     not a cue.
+  //
+  //   - **The red stop is gone.** It sat immediately below the flash, which is also red, so it
+  //     added a colour change that conveyed nothing - the very next event was red again, flashing.
+  //
+  //   - **Each remaining stop is longer.** Fewer, wider stages mean fewer changes crossing the
+  //     window, which is what made it feel busy: four changes crammed into the second or so it
+  //     takes to cross 6130-6690 rpm.
+  //
+  // The thresholds are the tuning surface. If a stage still feels too short, widening it is one
+  // number here.
+  if (position < 0.20f) return kBlack;    // in the window, but nothing worth saying yet
+  if (position < 0.47f) return kGreen;
+  if (position < 0.73f) return kYellow;
+  return kAmber;                          // the last stage before the flash takes over
 }
 
 const char* linkLine(LinkState state) {

@@ -29,7 +29,7 @@ built in a single layer.
 | `CAP-LINKSTATE` | 14 | ☐ | — | `A5` · `A6` · `U8` · `I13` |
 | `CAP-PROVISION` | 9 | ☐ | — | `A9` · `I11` · `I12` · `U10` |
 | `CAP-RECONFIG` | 15 | ☐ | — | `A7` · `U11` |
-| `CAP-PUBLISH` | 19 | ☐ | — | `A8` · `I4` · `I7` · `I8` · `X1` |
+| `CAP-PUBLISH` | 19 | ✅ | **on-rig** | `A8` passed 2026-09-23 against live iRacing · `I7`/`I8` on the loopback suite · `X1` closed by the capture |
 
 ## Slices
 
@@ -53,7 +53,7 @@ built in a single layer.
 | 16 | OTA and the update window | full | ◐ | off-device | OTA path **proven**: 0.1.1 delivered wirelessly and confirmed running. The credential gate and the update *window* are still owed |
 | 17 | Security and error-catalogue verification | verification-only | ☐ | — | `I10` · `R3` · `Q8` · `S1`–`S12` |
 | 18 | `E2E-STANDARD` conformance and journeys | verification-only | ☐ | — | `Q2` · `U10` |
-| 19 | Live iRacing integration | full | ☐ | — | `A8` · `X1` · `X6` |
+| 19 | Live iRacing integration | full | ◐ | **on-rig** | **First live run 2026-09-23.** `A2`, `A3`, `A4` and `A8` all pass against real iRacing telemetry — gear mapping, the ramp through to the flash, per-side proximity, and values agreeing with SimHub's own display. `X10` outstanding: it needs two cars alongside at once, which a practice session did not produce |
 | 20 | Documentation, notice, provenance, release | cross-cutting | ☐ | — | `G1` · `G3` · `G5` · `G7` · `V5` · `V6` |
 | 21 | Adopter unaided-setup trial | verification-only | ☐ | — | `A10` |
 | 22 | Drive it and record the criteria | verification-only | ☐ | — | `A1` |
