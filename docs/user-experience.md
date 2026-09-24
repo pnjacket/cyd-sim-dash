@@ -7,7 +7,7 @@ trigger: interactive_ui
 in-scope-subaspects: [navigation-ia-contract, screen-specifications, states, user-journeys]
 current-rung: contract-grade
 status: published
-version: 0.7.0
+version: 0.8.0
 ---
 
 # User Experience — cyd-sim-dash
@@ -118,6 +118,20 @@ an arriving frame rather than by a user action:
   over-rev state; the flash does not time out.
 - **Edge bars** — independently white or black. Both may be lit at once.
 - **Gear** — any value in its domain, including neutral and reverse.
+- **Blanked** — the backlight is off. Entered when the driving screen has not been showing for
+  `blankAfterMinutes`, which covers every non-driving condition: `unreachable`, `noSim`, `stale`,
+  `adapterFault`, `unresolved`, `joining` and `drivingPending`. Left the instant a live frame is
+  accepted. Realises `CAP-BLANK`.
+
+  Two exceptions, both messages a human is meant to read: **`SCREEN-UPDATE`** stays lit, because a
+  dark panel mid-transfer reads as a crash and invites pulling the power — the one action that can
+  actually brick the device; and **`versionMismatch`** stays lit, because naming the two versions so
+  somebody updates the lagging half is the entire purpose of that condition.
+
+  **`SCREEN-SETUP` needs no exception.** It is drawn from the provisioning callback while
+  `autoConnect` blocks inside setup, so the loop carrying the blanking timer is not running. It is
+  exempt by construction, which is worth stating so it does not later look like an oversight.
+
 - **Element unavailable** — an element the running title cannot supply, arriving as `null`. In v1,
   with iRacing the only title, this should never occur in normal use, which makes it a useful
   **defect signal** rather than a normal condition. [FUTURE-SCOPE] In v2 it becomes an everyday
@@ -142,9 +156,10 @@ one traverses screens that would otherwise never be exercised.
 - [REVISIT] The nine link-state icons are specified as primitive compositions rather than drawn
   artwork. They should be judged together on the panel once drawn — nine glyphs that are each
   sensible alone can still be confusable as a set.
-- [REVISIT] **Night brightness.** The ramp is now two 40 px bands rather than the full screen, so
-  the lit area is roughly a third of what this concern was written about, and the centre is black.
-  Still no auto-dim. Pure black at rest and a 3 Hz rather than faster flash both help; the night-comfort success
+- [REVISIT] **Night brightness.** Two things have narrowed this. The ramp is two 40 px bands rather
+  than the full screen, so the lit area is roughly a third of what the concern was written about; and
+  `CAP-BLANK` now darkens the panel entirely when it is not driving. What remains is brightness
+  *while actually driving*, which neither change touches. Still no auto-dim. Pure black at rest and a 3 Hz rather than faster flash both help; the night-comfort success
   criterion tests precisely this, and the light sensor remains unused by decision.
 - ~~The exact ramp interpolation stops.~~ **Settled on the rig, 2026-09-23.** There is no
   interpolation: four discrete stops at 0.20 / 0.47 / 0.73 of the window, the lowest unlit. The
@@ -197,6 +212,7 @@ page — see Design Decisions.
 | ~~**Continuous blend** ramp~~ → **four discrete stops**, reversed 2026-09-22 | The original reasoning was that a blend conveys *how far* through the window you are rather than merely which band. Measured against real glass, the cost was not worth it: a blend repaints on every RPM step, each repaint is a visible sweep, and under acceleration the panel never settles. The operator judged the constant sweeping more distracting than the extra precision was useful | A stepped change is more noticeable peripherally than a smooth one — which the original decision counted as a drawback and is arguably an advantage for a shift cue. Precision between stages is lost, and nothing was using it |
 | **Retuned again on the rig**, 2026-09-23: lowest stop unlit, red stop removed, remaining stops widened | Driving it showed what a bench could not. The window is narrow and sits near the top of the rev range, so ordinary driving is almost always inside it — a lit bottom stage meant the bands were on continuously, and a cue that is always on is not a cue. The red stop sat immediately below a flash that is also red, so it announced a change and then announced the same colour again | The bands say nothing at all for the lowest fifth of the window. That is deliberate, and it means the cue starts later than the shift-point arithmetic alone would suggest |
 | **Pure black** at rest | Least light at night, strongest contrast when green first appears | At a glance, an idling panel can look switched off — contradicted by the gear glyph |
+| **Blank the backlight when idle** rather than dim it, decided 2026-09-23 | The idling case is most of the time a rig is powered on, and a dark panel is worth more at night than a dim one. Dimming was available — GPIO 21 is PWM-capable — and was not chosen | A dark panel is indistinguishable from a dead one. Accepted knowingly: a panel that fails to wake is an obvious bug rather than a subtle one, and `API-STATE` reports `backlightOn` while the glass is dark. The cost is real and is not hidden |
 | Link screen is **icon plus one line**; detail lives on the configuration page | Keeps the panel glanceable and uncluttered | **Narrows a success criterion.** The panel names the condition but not the configured address, so diagnosing a wrong-but-resolvable host needs the configuration page. Product & Requirements' link-diagnosable criterion carries this as a traced exception |
 | **Boot screen** showing identity and firmware | Firmware version is exactly what you want when a version mismatch is the suspect, and it is visible before anything else can fail | One more screen, briefly delaying the first useful state |
 

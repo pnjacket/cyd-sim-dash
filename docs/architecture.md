@@ -7,7 +7,7 @@ trigger: always
 in-scope-subaspects: [component-decomposition-responsibilities, boundaries-isolation-model, component-interactions-data-flow, cross-cutting-patterns, technology-choices, adr-register, logical-deployment-topology]
 current-rung: contract-grade
 status: published
-version: 0.7.0
+version: 0.8.0
 ---
 
 # Architecture — cyd-sim-dash
@@ -190,7 +190,7 @@ constraint in Product & Requirements.
 | `COMPONENT-REPLAY` | Replay tool | Standalone Python script that reads a capture and emits frames, so firmware work needs neither SimHub nor a sim | Command line | A capture file |
 | `COMPONENT-NET` | Device network layer | Joins WiFi, resolves the host, registers on an interval, receives datagrams, validates version and fields, orders by stamp, publishes into the shared buffer. Runs on the WiFi core | The registration keepalive | WiFi stack; ArduinoJson |
 | `COMPONENT-STATE` | Display-state engine | Derives display state from the newest accepted frame plus its age. Pure logic, no drawing, **no per-title branch** | — | `COMPONENT-NET` output |
-| `COMPONENT-RENDER` | Renderer | Paints display state to the panel using dirty regions; owns layout geometry. Runs on the application core | — | TFT_eSPI; `COMPONENT-STATE` |
+| `COMPONENT-RENDER` | Renderer | Paints display state to the panel using dirty regions; owns layout geometry. Runs on the application core | — | TFT_eSPI; `COMPONENT-STATE` Also owns the **backlight**, including the idle blanking of `CAP-BLANK`: the pin is the renderer's, and putting the timer anywhere else would mean two owners for one piece of hardware |
 | `COMPONENT-WEB` | Portal, configuration page and state endpoint | Serves the provisioning portal when unprovisioned or unable to connect, the authenticated configuration page while connected, and the read-only `API-STATE` endpoint in every build | Three HTTP surfaces | WiFiManager; `COMPONENT-CONFIG`; `COMPONENT-STATE` |
 | `COMPONENT-CONFIG` | Configuration store | Reads and writes the persisted record, applies one-version migration, and erases on request | — | NVS |
 

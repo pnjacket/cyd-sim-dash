@@ -7,7 +7,7 @@ trigger: always
 in-scope-subaspects: [test-pyramid-test-types, coverage-map, real-flow-e2e-standard, quality-bars-gates, test-data-strategy, specialized-testing, manual-exploratory]
 current-rung: contract-grade
 status: published
-version: 0.10.0
+version: 0.11.0
 ---
 
 # Quality & Testing — cyd-sim-dash
@@ -336,6 +336,8 @@ named forcing in the catalogue itself.
 | U8 | `SCREEN-LINK` |  | U10 · R6 · A6 | `JOURNEY-RECOVERY` |
 | I11 · I12 · A9 | `SCREEN-PORTAL` |  | U10 · A7 | `JOURNEY-RECONFIG` |
 | U11 · A7 | `SCREEN-CONFIG` |  | U10 · I6 | `JOURNEY-VERSION-MISMATCH` |
+| Q12 · Q13 · Q14 · `SUCCESS-DARK-WHEN-IDLE` | `CAP-BLANK` |  | Q12 | `SUCCESS-DARK-WHEN-IDLE` |
+| Q15 · D8 | `INV-BLANK-BOUND` |  |  |  |
 | A9 · U10 | `SCREEN-SETUP` |  | manual pass during an OTA | `SCREEN-UPDATE` |
 
 **Security assertions** — mostly negative, and a negative assertion still owes a check: asserting
@@ -413,4 +415,8 @@ named in prose.
 | Q9 | A test is failed deliberately, re-run without code change, and the resulting record shows an incident with both runs rather than a quarantine entry | flake policy |
 | Q10 | Each of the seven conformance checks is failed deliberately by a stub adapter, and each failure is caught | adapter conformance suite |
 | Q11 | Timing-sensitive rows — flash rate, staleness threshold — state their environment precondition and are not retried | flake policy, measurement rows |
+| Q12 | The panel blanks after the configured period in a non-driving state, and **lights within one frame interval of a live frame being accepted**. The wake half is asserted separately and first: a panel that blanks and never wakes is indistinguishable from a dead one, and is the failure this feature can actually cause | `CAP-BLANK` |
+| Q13 | With `blankAfterMinutes` set to 0 the panel never blanks, however long it is left in a non-driving state | `CAP-BLANK`, its disable path |
+| Q14 | `SCREEN-UPDATE` and the `versionMismatch` condition stay lit past the configured period | the two stated exemptions |
+| Q15 | A configuration record written at schema 1 is migrated and gains `blankAfterMinutes` at its default; host and credential survive | `INV-CONFIG-MIGRATION` against its first real migration |
 

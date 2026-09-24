@@ -50,6 +50,7 @@ Three sittings need the rig, and they are the critical path. Everything else run
 | 20 | Documentation, notice, provenance pass, v1 release | cross-cutting | `G1`, `G3`, `G5`, `G7`, `V5`, `V6` | no | ☐ |
 | 21 | Adopter unaided-setup trial | verification-only | `SUCCESS-SETUP-UNAIDED`, `A10` | no | ☐ |
 | 22 | Drive it and record the criteria | verification-only | every `SUCCESS-*`, `A1` | **yes** | ☐ |
+| 23 | Backlight blanking | full | `CAP-BLANK`, `INV-BLANK-BOUND`, `ENTITY-DEVICECONFIG` schema 2, `UIF-CONFIG`, `API-STATE` | **feasibility test first** | ☐ blocked |
 | — | **v2 Go/No-Go gate** | decision | reserved to the operator | — | ☐ |
 
 ## The mapping sitting is done with a tool, not a picker
@@ -364,6 +365,26 @@ The check was written correctly, named the exact failing cases, and had simply n
 is a manual check, and nothing but a person looking at the panel can execute it. That is the
 argument for the manual gate stated better than the doc set states it: the specification was right,
 the code was wrong, and only the glass could tell the difference.
+
+## Slice 23 is blocked on a five-second test
+
+`CAP-BLANK` was authored doc-first on 2026-09-23 and is **not implementable until one thing is
+known**: whether driving GPIO 21 low actually darkens this panel.
+
+Some ESP32-2432S028R revisions hardwire the backlight on — the pin is present, defined as `TFT_BL`,
+and does not gate the transistor. This build has only ever driven it HIGH, at `panel::begin`, so the
+off state has never been observed on this hardware. Published pinouts say GPIO 21 is the backlight
+control and is PWM-capable; they also say some revisions tie it on. Both can be true of different
+boards.
+
+The test is trivial and owed before any of the slice is built: blank the backlight for two seconds
+at boot and look at the panel. If it stays lit, `CAP-BLANK` is not implementable on this hardware,
+and the honest response is to retire the contract rather than ship a setting that does nothing. The
+LDR on GPIO 34 would remain as a different feature, not a substitute.
+
+The bindings for `CAP-BLANK` and `INV-BLANK-BOUND` are deliberately empty. An unbound new contract
+is the planner's build-new signal, and pointing a locator at code that does not exist is how a
+binding map starts lying.
 
 ## Two contracts with no natural home
 

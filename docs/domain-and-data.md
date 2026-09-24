@@ -7,7 +7,7 @@ trigger: always
 in-scope-subaspects: [domain-entities-relationships, identifiers, business-invariants-rules, lifecycle-states, data-classification-tags, persistence-storage-schema, migrations-versioning]
 current-rung: contract-grade
 status: published
-version: 0.7.0
+version: 0.8.0
 ---
 
 # Domain & Data — cyd-sim-dash
@@ -192,6 +192,19 @@ settings, which is accepted.
   length and no composition rule.
 - [REVISIT] Whether game profiles become runtime-editable from SimHub's settings.
 
+### The first real schema migration
+
+`blankAfterMinutes` takes `ENTITY-DEVICECONFIG` from schema version 1 to 2, which is the first time
+`INV-CONFIG-MIGRATION` has had anything to do. The rule is unchanged and applies as written: a
+record exactly one version old is migrated in place, so a device updating from a build that predates
+this field keeps its host and credential and gains the field at its **default of 1 minute**. A record
+two or more versions old is discarded and the device returns to unprovisioned.
+
+That default is a behaviour change on update, and a deliberate one: a device that updates into this
+firmware starts blanking without anyone asking it to. The alternative — defaulting to 0, disabled —
+would mean nobody gets the feature without finding the setting, which is a feature nobody asked to
+opt into. `CAP-BLANK` is the reason the field exists, so it defaults to on.
+
 ## Dependencies & Cross-references
 
 | Consumed from | What | Why |
@@ -262,7 +275,7 @@ cannot migrate it, discards it, and raises the portal. Settings are lost and re-
 | `ENTITY-SPOTTERSTATE` | Proximity for one side | one of `none` · `one` · `two` · `unavailable` | Domain follows iRacing, the only v1 source. `unavailable` means the title has no proximity source and is **not** the same fact as `none` |
 | `ENTITY-DISPLAYSTATE` | What the panel should show | `gearGlyph` 1–2 chars · `shiftPhase` one of `neutral` \| `ramping` \| `flashing` \| `unavailable` · `rampPosition` 0..1 when ramping · `barLeft` bool · `barRight` bool · `linkState` **nullable** — `null` when the driving screen is showing, otherwise one of `drivingPending` \| `noSim` \| `unsupportedTitle` \| `adapterFault` \| `stale` \| `joining` \| `unresolved` \| `versionMismatch` \| `unreachable` | Derived on the device from the newest acceptable frame plus its age. Never transmitted, never persisted |
 | `ENTITY-REGISTRATION` | Device announcement and keepalive | `protocolMajor` int · `protocolMinor` int · `deviceId` string — see Identifiers · `firmwareVersion` string | Device to PC, repeated on an interval. The plugin keys its table on `deviceId` and replies to the packet's source address |
-| `ENTITY-DEVICECONFIG` | Persisted device settings | `schemaVersion` int · `ssid` ≤32 octets · `wifiPassword` 8–63 chars, `secret` · `pcHost` ≤253 chars · `credential` `secret` | Singleton per device. No port field — the port is fixed |
+| `ENTITY-DEVICECONFIG` | Persisted device settings | `schemaVersion` int · `ssid` ≤32 octets · `wifiPassword` 8–63 chars, `secret` · `pcHost` ≤253 chars · `credential` `secret` | Singleton per device. No port field — the port is fixed  **Schema version 2 from 2026-09-23**, adding `blankAfterMinutes`. |
 | `ENTITY-GAMEPROFILE` | Per-adapter fallback constants | `titleId` string · `rampStartFraction` 0..1, default 0.88 · `flashFraction` 0..1, default 0.97 | Lives on the PC inside its adapter. Never transmitted |
 | `ENTITY-CAPTURE` | Recorded fixture | ordered lines of `{offsetMs, frame}` | Line-delimited JSON. Contains only frame fields, so it carries nothing tagged `secret` or identifying |
 
@@ -282,6 +295,7 @@ Gear-value domain, referenced above: `R`, `N`, or an integer 1–18.
 | `INV-STATUS-CONSISTENT` | A frame whose status is not `live` carries every telemetry element as *unavailable*, and never a value. A frame whose status is `live` carries no element as unavailable unless the title genuinely lacks that source. **`titleId` is not a telemetry element** and is exempt: an `unsupportedTitle` frame must carry the title's identity, since naming it is the entire point of that status | Adapter conformance suite; validated on the device, which rejects a violating frame whole |
 | `INV-CONFIG-SINGLETON` | Exactly one configuration record exists per device | **Structural** — one fixed NVS namespace and key set, written as a single operation; the store cannot represent a second record |
 | `INV-CONFIG-MIGRATION` | A record exactly one schema version old is migrated in place; any older or unreadable record is discarded and the device returns to unprovisioned | Device, on read at boot |
+| `INV-BLANK-BOUND` | `blankAfterMinutes` is an integer in 0–120 inclusive. 0 means the backlight is never switched off; any other value is a whole number of minutes. A stored record outside that range is treated as unreadable, which returns the device to unprovisioned rather than guessing a period | Device, on read at boot; and the configuration form, on save |
 | `INV-CAPTURE-CLEAN` | A capture contains no field tagged `secret` or identifying | **By construction** — captures serialise `ENTITY-FRAME` only, and no such field appears in it |
 | `INV-SECRET-CONFINEMENT` | Secrets never appear on any screen, in serial output, in logs, in a capture, or in any wire message | **Advisory** — no schema enforces this; it is held by review and by the tests named in Quality & Testing, and can be violated by a careless code change |
 

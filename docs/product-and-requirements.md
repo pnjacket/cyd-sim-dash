@@ -7,7 +7,7 @@ trigger: always
 in-scope-subaspects: [problem-motivation, target-users-personas, goals-success-criteria, capability-register, constraints-assumptions, risks]
 current-rung: contract-grade
 status: published
-version: 0.6.0
+version: 0.7.0
 ---
 
 # Product & Requirements — cyd-sim-dash
@@ -176,9 +176,11 @@ module structure (an engineering constraint, below).
 - [GAP] The iRacing mapping table is authored but **unobserved against a live session**. The
   properties, types and semantics are recorded; what is owed is confirmation, which build step 1
   performs. Owned by Integrations; named here because three capabilities depend on it.
-- [REVISIT] **Night brightness.** A full-screen colour ramp with no auto-dim will be bright in a
-  dark room. The light sensor is unused in v1 by decision, and one success criterion now tests
-  precisely this; revisit if it fails.
+- [REVISIT] **Night brightness.** Partly answered by `CAP-BLANK`, which darkens the panel entirely
+  when it is not driving — the idling case, which is most of the time a rig is powered on. What
+  remains unanswered is brightness *while driving*: the bands are still full-brightness, there is
+  still no auto-dim, and the LDR on GPIO 34 is still unused by decision. `SUCCESS-NIGHT-COMFORT`
+  tests that residue.
 - [FUTURE-SCOPE] ETS2 was previously scoped to gear only; that decision stands and carries into
   its v2 adapter, which reports shift and proximity as unavailable rather than suppressing them on
   the device.
@@ -200,6 +202,30 @@ This concern owns the root of the traceability web and consumes little. What it 
 
 **No non-functional target is referenced** — see Non-goals. Nothing in this concern points at a
 `PERF-*` or equivalent, because none exists by decision.
+
+### Blanking the panel, and what it costs
+
+`CAP-BLANK` is in tension with a position this doc set takes elsewhere, and the tension is
+deliberate rather than overlooked. `ENTITY-FRAME` has the plugin publish frames *whenever it is
+alive* so that **silence means exactly one thing**, and `SCREEN-LINK` exists so that a panel which
+is not driving still says why. A dark panel says nothing at all, and is indistinguishable from a
+dead one.
+
+**Decided by the operator 2026-09-23, with this argument:** if the panel fails to light when
+telemetry returns, that is a bug which will be noticed immediately — it is not a subtle ambiguity
+but an obviously broken product. And a panel that will not light at all is a larger and more visible
+problem than an ambiguous dark one. The diagnosability that blanking costs is diagnosability of a
+state the operator is not looking at; the diagnosability that matters is preserved, because
+`API-STATE` reports whether the backlight is on and is reachable while the glass is dark.
+
+Two conditions are exempt, because both are messages a human is expected to read and act on:
+**`SCREEN-UPDATE`**, where a dark panel mid-transfer reads as a crash and invites someone to pull
+the power — the one action that can actually brick the device — and **`versionMismatch`**, the single
+link condition whose whole purpose is to tell a person which half to update.
+
+`SCREEN-SETUP` needs no exemption: it is shown from the provisioning callback while `autoConnect`
+blocks, so the loop that runs the blanking timer is not executing at all. It is exempt by
+construction, and that is worth stating because it would otherwise look like an oversight.
 
 ## Examples / Worked scenarios
 
@@ -269,6 +295,7 @@ that proves the capability.
 | `CAP-LINKSTATE` | Whenever live telemetry is absent, show a distinct screen naming **which** of nine link conditions holds, each with its own icon and plain-language line. Diagnostic detail beyond the condition name lives on the configuration page, not the panel | both | in | link-diagnosable criterion, minus its traced exception |
 | `CAP-PROVISION` | Capture WiFi credentials and the PC host through a captive portal when unprovisioned or unable to connect, and persist them across reboots | adopter | in | setup-unaided criterion |
 | `CAP-RECONFIG` | Allow the PC host and WiFi settings to be changed while connected, through an authenticated configuration page served on the device's own address | operator | in | acceptance check A7 |
+| `CAP-BLANK` | Switch the panel's backlight **off** after a configured period in which the driving screen has not been showing, and switch it back on the instant a live frame is accepted. The period is operator-configurable and the feature is disableable | operator | in | `SUCCESS-DARK-WHEN-IDLE` · `SUCCESS-NIGHT-COMFORT` |
 | `CAP-PUBLISH` | Read SimHub properties through the title adapter matching the running sim and stream normalised telemetry frames to each registered device | operator | in | acceptance check A8 |
 
 ### Product success criteria
@@ -282,6 +309,7 @@ Each is recorded by the operator as met or not met, in ordinary use. Verificatio
 | `SUCCESS-SPOTTER-NOTICED` | When racing in close company, the driver reports noticing a car alongside from the edge bar before or at the same time as from the mirrors | `CAP-SPOTTER-LEFT`, `CAP-SPOTTER-RIGHT` |
 | `SUCCESS-NO-DISTRACTION` | In ordinary use, the driver reports no instance of the panel pulling their eye at a moment it should not have | all four display capabilities |
 | `SUCCESS-NIGHT-COMFORT` | When driving in a darkened room, the driver reports the panel is not uncomfortable to sit beside, including during shift flashes | `CAP-SHIFT` |
+| `SUCCESS-DARK-WHEN-IDLE` | With the rig powered on and SimHub running but no sim on track, the panel is dark within the configured period, and lights within one frame interval of telemetry resuming. Measured by leaving the rig idling and then driving | `CAP-BLANK` |
 | `SUCCESS-LINK-DIAGNOSABLE` | On each occasion telemetry is absent, the operator determines **which link is broken** from the panel alone, without a laptop or a network tool — **minus one traced exception**: the panel names the condition but not the configured address, so distinguishing a wrong-but-resolvable host from a switched-off PC requires the configuration page. Traced to the User Experience decision that the link screen is icon-plus-line with detail on the configuration page | `CAP-LINKSTATE` |
 | `SUCCESS-SETUP-UNAIDED` | An adopter goes from a flashed device to a working panel using only the repository README, without contacting the operator | `CAP-PROVISION` |
 
