@@ -1,6 +1,7 @@
 # Probe captures
 
-Drop the rig's `cyd-probe` output here — unzipped, so the files sit directly in this folder:
+Drop the rig's `cyd-probe` output here — unzipped, so the files sit directly in this folder.
+**Two of them are deliberately not committed**; see below.
 
     captures/probe/properties-inventory.txt
     captures/probe/properties-inventory-early.txt
@@ -13,6 +14,19 @@ iRacing mapping table observed once against a live session — and it settles th
 research could not: whether the spotter fields count cars or flag presence, and whether iRacing's
 per-car shift-light RPMs are actually populated.
 
-`samples.ndjson` is gitignored (it is large and regenerable by driving again). The three small text
-files are worth committing: they are the record of what was observed, and the mapping table in
-`docs/integrations-and-external-dependencies.md` cites them.
+**`samples.ndjson` and both `properties-inventory*.txt` are gitignored.**
+
+The frame capture is excluded because it is large and regenerable. The property inventories are
+excluded because they carry **personal data**: they dump every property with its live value, and
+iRacing's session data names every driver on track and carries their customer IDs. Third-party
+plugins republish those names under their own property trees, and the telemetry-file path contains
+the operator's account name.
+
+Redacting that reliably would mean enumerating fields that plugins are free to name however they
+like. It was attempted twice and was wrong both times — once too narrow, missing `DriverUserID` and
+every `benofficial2.*.Name`; once so broad it would have destroyed the evidence it was protecting.
+
+Nothing is lost. `FINDINGS.md` records every mapping row with its observed value and the analysis
+behind it, and `summary.txt` records the distinct-value answers. Those are what the mapping table in
+`docs/integrations-and-external-dependencies.md` cites. Keep the raw inventories locally if you want
+them; they are regenerable by re-running the probe.

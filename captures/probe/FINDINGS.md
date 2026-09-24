@@ -1,7 +1,10 @@
 # Mapping capture — findings
 
 **Captured** 2026-09-22 · iRacing · 5,219 samples over ~8.7 minutes · SimHub property inventory of
-19,916 entries. Raw evidence in this folder; `samples.ndjson` is gitignored and regenerable.
+19,916 entries. Raw evidence is **not committed**: `samples.ndjson` because it is large and regenerable, and both
+property inventories because they carry driver names and customer IDs from the session. Everything
+below is the distilled record, and it is self-contained — no claim here depends on reading the raw
+files.
 
 This is the evidence for Integrations' check `X1`. Below, **observed** means it appears in the
 capture; **derived** means it was computed from the capture and the fit is stated.

@@ -355,6 +355,12 @@ as the primary failure mode, not a footnote.
 19,916-entry property inventory. Evidence and full analysis in
 [`captures/probe/FINDINGS.md`](../captures/probe/FINDINGS.md).
 
+The raw frame capture and the property inventories are **not in the repository**. The inventories
+dump every property with its live value, which includes the name and customer ID of every driver on
+track — other people, who did not agree to appear here. `FINDINGS.md` and `summary.txt` carry the
+distilled record instead, and nothing in the mapping table depends on the raw files. Re-running the
+probe regenerates them.
+
 Every row below is confirmed except the one marked otherwise, which is the both-sides spotter case:
 it needs a car on each side simultaneously, and the session never produced one.
 

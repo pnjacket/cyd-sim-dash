@@ -17,6 +17,19 @@ __pycache__/
 # captures are local fixtures, not source
 captures/**/*.ndjson
 
+# SimHub property inventories are NOT committed.
+#
+# They dump every property with its live value, which is what made them good evidence and what
+# makes them unpublishable: iRacing's session data names every driver on track and carries their
+# customer IDs, third-party plugins republish those names under their own property trees, and the
+# telemetry-file path contains the operator's account name. Redacting that reliably means
+# enumerating fields that plugins are free to name however they like - it was attempted twice and
+# was wrong both times, once too narrow and once so broad it destroyed the evidence.
+#
+# Nothing is lost by excluding them. FINDINGS.md records every mapping row with its observed value,
+# and summary.txt records the distinct-value answers. Keep the raw files locally if you want them.
+captures/**/properties-inventory*.txt
+
 # never commit secrets
 *.local
 secrets.*
