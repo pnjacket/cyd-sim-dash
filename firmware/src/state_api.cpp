@@ -22,7 +22,7 @@ char           g_deviceBuf[16] = {0};
 char           g_versionBuf[16] = {0};
 
 void handleState() {
-  char body[640];
+  char body[kStateBufferBytes];
   render(body, sizeof(body), g_state, g_context, g_counters);
   web::server().send(200, "application/json", body);
 }

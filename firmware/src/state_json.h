@@ -32,6 +32,13 @@ struct Context {
   const char* resetReason = "";
 };
 
+/// The buffer the projection is rendered into.
+///
+/// Measured rather than guessed: test_state_json.cpp renders every field at its maximum - including
+/// a 63-character host of nothing but quotes, which doubles under escaping - and asserts both that
+/// it fits and that at least 96 bytes of headroom remain. Widen this rather than trimming that test.
+constexpr size_t kStateBufferBytes = 1024;
+
 /// Render the JSON body. Returns characters written, excluding the NUL.
 size_t render(char* out, size_t capacity,
               const DisplayState& state, const Context& context, const net::Counters& counters);
