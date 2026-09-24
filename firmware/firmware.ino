@@ -46,6 +46,19 @@ static bool          g_hostResolved = false;
 static uint32_t      g_connectedAtMs = 0;
 static LinkState     g_shown = static_cast<LinkState>(0xFF);  // nothing drawn yet
 static bool          g_otaRunning = false;
+
+// True while an update is actually transferring.
+//
+// An OTA upload is a TCP stream that has to be serviced promptly, and it competes with everything
+// else this loop does. Once the panel is fed by a real SimHub at ~60 Hz, the receive path, the
+// renderer and the web server between them starve it enough that the upload aborts mid-transfer -
+// observed on 2026-09-23 as "connection aborted by the software in your host machine", after the
+// same push had worked repeatedly against an idle panel.
+//
+// The fix is to stop competing: while an update is in flight the loop does nothing but service it.
+// Telemetry is dropped for those few seconds, which costs nothing - the device is about to reboot
+// into new firmware anyway, and a panel mid-update is not one anybody is driving by.
+static bool          g_otaInProgress = false;
 static StampTracker  g_stamps;
 static net::Counters g_counters;
 static Frame         g_lastFrame;
@@ -100,7 +113,11 @@ static void startOta() {
     ArduinoOTA.setPassword(g_cfg.credential);   // SEC-CREDENTIAL-POLICY: non-empty, no minimum
   }
   ArduinoOTA
-      .onStart([]() { Serial.println("[ota] update starting"); panel::drawMessage("Updating..."); })
+      .onStart([]() {
+        g_otaInProgress = true;          // the loop yields everything else from here
+        Serial.println("[ota] update starting - telemetry paused until it finishes");
+        panel::drawMessage("Updating...");
+      })
       .onEnd([]() { Serial.println("[ota] update complete, rebooting"); })
       .onProgress([](unsigned int done, unsigned int total) {
         Serial.printf("[ota] %u%%\r", total ? (done * 100u / total) : 0u);
@@ -192,6 +209,10 @@ void setup() {
 
 void loop() {
   if (g_otaRunning) ArduinoOTA.handle();
+
+  // While an update is transferring, nothing else runs. See g_otaInProgress.
+  if (g_otaInProgress) return;
+
   web::handle();
 
   // A save or erase asks for a restart. Honoured out here rather than inside the handler, so the
