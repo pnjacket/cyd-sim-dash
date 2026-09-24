@@ -25,7 +25,7 @@ right edge bars for cars alongside — all four rendering at once.
 | Security & Privacy | Baseline | `contract-grade` | `contract-grade` | [security-and-privacy.md](security-and-privacy.md) |
 | Governance & Compliance | Baseline | `contract-grade` | `contract-grade` | [governance-and-compliance.md](governance-and-compliance.md) |
 | User Experience | Module | `contract-grade` | `contract-grade` | [user-experience.md](user-experience.md) |
-| Integrations & External Dependencies | Module | **`specified`** | `contract-grade` | [integrations-and-external-dependencies.md](integrations-and-external-dependencies.md) |
+| Integrations & External Dependencies | Module | `contract-grade` | `contract-grade` | [integrations-and-external-dependencies.md](integrations-and-external-dependencies.md) |
 
 ## Concerns out of scope
 
@@ -43,21 +43,26 @@ Governance's data-handling policy deferred. All are recorded in the manifest and
 
 ## Build-readiness
 
-**Nine of ten in-scope concerns are at `contract-grade`.** Integrations sits at `specified`, and
-the set is still `draft`. Both are gate conditions, so the set is **not build-ready** — which is
-the honest position rather than a setback.
+**All ten in-scope concerns are at `contract-grade`, and all ten are `published`.** The set is
+**build-ready** as of 2026-09-23.
 
-Integrations and Governance were audited twice on 2026-09-21. Both were corrected **down** to
-`specified` after the first audit, raised back after research, and the second audit reversed one of
-those raises. Governance now stands at Contract-grade with all eight inbound licence rows cleared
-against primary sources. **Integrations stays at `specified`**, and the reason is worth keeping:
-Delivery Process schedules confirming the iRacing mapping as *build step 1*, so a claim that the
-mapping is finished would contradict the playbook a builder actually follows.
+Integrations was the last to move. It was audited twice on 2026-09-21 — corrected **down** to
+`specified` after the first audit, raised back after research, and the second audit reversed that
+raise — and then held at `specified` deliberately, because Delivery Process schedules confirming the
+iRacing mapping as *build step 1*, and a claim that the mapping was finished would have contradicted
+the playbook a builder actually follows.
 
-That is deliberate. The operator has no rig access and chose to find those values while building
-rather than be blocked on them. The honest expression of that choice is a doc that says `specified`
-and a playbook whose first step closes it. Each round trip is recorded in the doc's *Rung note*
-rather than quietly reversed.
+That step was carried out on 2026-09-22 with a purpose-built probe plugin: 5,219 samples from a live
+iRacing session, every row of the mapping table recorded. It corrected three answers that research
+had got wrong, including the title-identity string. Integrations rose to `contract-grade` on the
+evidence rather than on argument. Each round trip is recorded in that doc's *Rung note*.
+
+**Published is a claim about the documents, not about the product.** Two checks were closed by
+operator judgement rather than by the method they specify, and both say so where they live: `U5`'s
+slow-motion flash-rate measurement was **waived**, and `X10` — both edge bars lighting when between
+two cars — was **accepted without the live race it asks for**, on the strength of iRacing's published
+SDK and independent corroboration of the derivation. Neither is recorded as verified, and `X10`
+names the symptom to watch for if the acceptance turns out to be wrong.
 
 **127 contract IDs** are minted, each on exactly one register line in its owning concern, with
 every reference resolving and every contract carrying a coverage-map row — a named check or a
@@ -100,9 +105,20 @@ datagram cap does not close it. Recorded as `SEC-PARSER-FLOOR`.
 
 ## Remaining open items
 
-The largest single item is that **no mapping row has been observed against a live session**. That is
-what holds Integrations at `specified`, and it closes in one sitting at build step 1 — the same
-sitting that starts the build.
+~~No mapping row has been observed against a live session.~~ **Closed 2026-09-22** — every row
+recorded from 5,219 live samples.
+
+What remains is not documentation:
+
+- **`X10` is accepted rather than verified.** Whether iRacing emits its both-sides spotter value in
+  a real race is unobserved; the derivation around it is well corroborated. The symptom if it is
+  wrong is named in Integrations.
+- **`U5`'s flash-rate tolerance is unmeasured** by choice. The arithmetic is asserted in the unit
+  tier; the panel is not measured against it.
+- **The nine link-state icons are unbuilt.** `SCREEN-LINK` renders its plain-language lines only,
+  and `U8`/`U13` wait on the icons.
+- **`A1`, `A10` and the success criteria** need ordinary use and an unaided setup trial, neither of
+  which is a doc task.
 
 ## Next step
 

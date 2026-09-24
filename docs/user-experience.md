@@ -6,8 +6,8 @@ behavior: module
 trigger: interactive_ui
 in-scope-subaspects: [navigation-ia-contract, screen-specifications, states, user-journeys]
 current-rung: contract-grade
-status: draft
-version: 0.6.0
+status: published
+version: 0.7.0
 ---
 
 # User Experience — cyd-sim-dash

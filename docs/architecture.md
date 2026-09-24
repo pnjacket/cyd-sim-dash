@@ -6,8 +6,8 @@ behavior: core
 trigger: always
 in-scope-subaspects: [component-decomposition-responsibilities, boundaries-isolation-model, component-interactions-data-flow, cross-cutting-patterns, technology-choices, adr-register, logical-deployment-topology]
 current-rung: contract-grade
-status: draft
-version: 0.6.0
+status: published
+version: 0.7.0
 ---
 
 # Architecture — cyd-sim-dash

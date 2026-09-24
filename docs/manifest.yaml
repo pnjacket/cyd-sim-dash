@@ -74,7 +74,10 @@ concerns:
     out_of_scope_subaspects: [component-reuse-design-system-binding, responsive-layout]
   integrations-and-external-dependencies:
     in_scope: true
-    current_rung: specified
+    # Raised 2026-09-23. X1 - every row of the mapping table observed once against a live iRacing
+    # session - was the only thing holding this at specified, and the capture of 2026-09-22 closed
+    # it: 5,219 samples, every row recorded, three research answers corrected against measurement.
+    current_rung: contract-grade
     target_rung: contract-grade
     out_of_scope_subaspects: []
 

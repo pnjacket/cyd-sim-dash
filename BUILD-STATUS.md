@@ -24,8 +24,8 @@ built in a single layer.
 |---|---|:---:|---|---|
 | `CAP-GEAR` | 11 | ✅ | **on-rig** | `U2` and `U3` passed 2026-09-23 · E2E replay green · `A2` still wants the live sim |
 | `CAP-SHIFT` | 12 | ✅ | **on-rig** | `U4` passed 2026-09-23 · `U5` accepted by judgement, tolerance unverified · `A3` still wants the live sim |
-| `CAP-SPOTTER-LEFT` | 13 | ✅ | **on-rig** | `U7` passed 2026-09-22 · `X2` all seven enum rows · `A4` and `X10` still want a live race |
-| `CAP-SPOTTER-RIGHT` | 13 | ✅ | **on-rig** | `U7` passed 2026-09-22 · `X2` all seven enum rows · `A4` and `X10` still want a live race |
+| `CAP-SPOTTER-LEFT` | 13 | ✅ | **on-rig** | `U7` passed 2026-09-22 · `A4` passed on-rig 2026-09-23 · `X2` all seven enum rows · **`X10` accepted without observation** 2026-09-23 — see Integrations for what that rests on |
+| `CAP-SPOTTER-RIGHT` | 13 | ✅ | **on-rig** | `U7` passed 2026-09-22 · `A4` passed on-rig 2026-09-23 · `X2` all seven enum rows · **`X10` accepted without observation** 2026-09-23 — see Integrations for what that rests on |
 | `CAP-LINKSTATE` | 14 | ☐ | — | `A5` · `A6` · `U8` · `I13` |
 | `CAP-PROVISION` | 9 | ☐ | — | `A9` · `I11` · `I12` · `U10` |
 | `CAP-RECONFIG` | 15 | ☐ | — | `A7` · `U11` |
@@ -35,7 +35,7 @@ built in a single layer.
 
 | # | Slice | Type | Built | Verified (stage) | Proof |
 |---|---|---|:---:|---|---|
-| 1 | Confirm the iRacing property mapping | verification-only | ◐ | **on-rig** (partial) | `X1` — captured 2026-09-22, 5 219 samples: every mapping row observed except the both-sides spotter case, which the session never produced. One correction found (`"IRacing"`, not `"iRacing"`) |
+| 1 | Confirm the iRacing property mapping | verification-only | ✅ | **on-rig** | `X1` closed by the capture of 2026-09-22 — 5 219 samples, every mapping row recorded. Three research answers were corrected against measurement, including `"IRacing"` rather than `"iRacing"` |
 | 2 | Repository, CI and the records | cross-cutting | ✅ | off-device | pinned versions installed and matching the docs |
 | 3 | Wire contract and shared fixtures | headless | ✅ | off-device | 30 fixtures, all behaving as their directory claims |
 | 4 | Display-state engine | headless | ✅ | off-device | compiles clean; unit tier written, first run is CI |
@@ -61,9 +61,15 @@ built in a single layer.
 ## Gate status
 
 - **Definition-of-Done gate:** not yet evaluated — no slice has completed.
-- **Build-ready gate:** **not passed.** `integrations-and-external-dependencies` is at `specified`
-  against a `contract-grade` target, and all ten docs are `status: draft`. Slice 1 closes the
-  first; the publish step closes the second.
+- **Build-ready gate:** **passed 2026-09-23.** All ten in-scope concerns are at `contract-grade`
+  against a `contract-grade` target, and all ten are `status: published`. The last movement was
+  Integrations, held at `specified` until `X1` — every row of the mapping table observed against a
+  live session — was closed by the capture of 2026-09-22.
+
+  Publishing is a claim about the *documents*, not the product. Two checks were closed by operator
+  judgement rather than by their specified method, and both say so where they live: `U5`'s
+  slow-motion flash measurement was waived, and `X10` was accepted without the live race it asks
+  for. Neither is recorded as verified.
 - **Revoked Verified:** none. A bug adjudicated as a code defect revokes the affected slice's
   Verified here via a failing regression case, leaving the contract text untouched. An unreproduced
   bug writes nothing here.

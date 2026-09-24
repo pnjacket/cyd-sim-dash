@@ -6,8 +6,8 @@ behavior: core
 trigger: always
 in-scope-subaspects: [domain-entities-relationships, identifiers, business-invariants-rules, lifecycle-states, data-classification-tags, persistence-storage-schema, migrations-versioning]
 current-rung: contract-grade
-status: draft
-version: 0.6.0
+status: published
+version: 0.7.0
 ---
 
 # Domain & Data — cyd-sim-dash

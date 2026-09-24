@@ -6,8 +6,8 @@ behavior: baseline
 trigger: always (raised by security_risk: secrets, network)
 in-scope-subaspects: [trust-boundaries, secrets-credential-handling, authentication-mechanism, authorization, threat-model, encryption, data-protection-mechanisms-per-sensitive-field]
 current-rung: contract-grade
-status: draft
-version: 0.6.0
+status: published
+version: 0.7.0
 ---
 
 # Security & Privacy — cyd-sim-dash

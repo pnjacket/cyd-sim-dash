@@ -6,8 +6,8 @@ behavior: core
 trigger: always
 in-scope-subaspects: [http-rpc-api-surface, event-surface, ui-entrypoints, error-model-catalog, versioning-compatibility]
 current-rung: contract-grade
-status: draft
-version: 0.8.0
+status: published
+version: 0.9.0
 ---
 
 # Interfaces & Contracts — cyd-sim-dash

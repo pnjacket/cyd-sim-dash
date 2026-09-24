@@ -6,8 +6,8 @@ behavior: module
 trigger: third_party_deps
 in-scope-subaspects: [per-external-contract, failure-modes-fallback-degradation, criticality, fidelity-substitution, version-pinning, data-mapping]
 current-rung: specified
-status: draft
-version: 0.6.0
+status: published
+version: 0.7.0
 ---
 
 # Integrations & External Dependencies — cyd-sim-dash
@@ -197,10 +197,7 @@ Domain & Data.
   amendment.
 - ~~What the shift-light fractions are a fraction of.~~ **Moot** — the adapter uses iRacing's native
   absolute RPMs and never multiplies a fraction.
-- [GAP] Whether `SpotterCarLeft` / `SpotterCarRight` **count** cars on a side (so that `2` means two)
-  or merely flag presence. **Not a v1 blocker**, and no longer a fork left to build-time discovery.
-  Capture 2026-09-22 observed `{0, 1}` only, but never produced two cars on one side, so this is
-  **unresolved rather than answered** — the observation is consistent with both readings.
+- ~~Whether `SpotterCarLeft` / `SpotterCarRight` **count** cars on a side.~~ **Moot since 2026-09-22.** The adapter reads the raw `CarLeftRight` enum and does not consult the computed fields at all, so their upper domain no longer affects anything this product does. Left recorded rather than deleted because the question would otherwise be asked again by the next person to read the mapping table.
 
   **Source-selection rule — superseded 2026-09-22.** This previously had the adapter read the
   computed properties, falling back to the raw enum. That is now reversed: the enum is the primary
@@ -419,5 +416,5 @@ information* from *clear*, and so does this product.
 | X7 | The replay tool drives a device through a full captured lap with SimHub, the plugin and the sim all shut, and the device's behaviour is indistinguishable from live | fidelity substitution |
 | X8 | The README lists an exact version for the ESP32 core and each of the three device libraries, and a clean machine following it produces a working panel | version pinning by documentation |
 | X9 | The recorded SimHub tested version matches the one the plugin was built against | `DEP-SIMHUB` version policy |
-| X10 | **In a real race**, running side by side lights the bar on the correct side, and being between two cars lights **both** bars. Satisfied by operator observation during ordinary racing rather than by a staged scenario — rows `4..6` of the enum are impractical to produce deliberately, and waiting for a staged capture would block the build indefinitely. A negative observation falsifies the source-selection decision of 2026-09-22 and is reported as a bug against this check | the one assumption in the spotter derivation.<br><br>**Narrowed by research 2026-09-23**, not closed: the enum's definition is corroborated by iRacing's own SDK header and two independent third-party readers, and the `left = {2,4,5}` derivation matches what other projects arrived at separately. What remains unobserved is only whether iRacing *emits* value `4` in a real race — the specification is no longer the uncertain part | the one assumption in the spotter derivation |
+| X10 | **Accepted by the operator 2026-09-23 without the live observation.** The check asked that a real race confirm both bars light when between two cars; the operator judged the wait disproportionate — the situation is rare, easy to miss while actually racing, and would have held the doc set open indefinitely.<br><br>**What the acceptance rests on, and what it does not.** The enum's definition is corroborated by iRacing's own `irsdk_defines.h` and two independent third-party readers, and the `left = {2,4,5}` derivation matches what other projects arrived at separately — so the *specification* is well evidenced. What remains unobserved is whether iRacing **emits** value `4` in practice. No source reports seeing it; every source only documents that it is defined.<br><br>This is therefore **accepted, not verified**, and the distinction is load-bearing: if iRacing never raises `4`, the both-sides case silently lights neither bar. The symptom would be both bars dark while the in-sim voice spotter calls a car on each side. If that is ever seen, this row is the first place to look | the one assumption in the spotter derivation |
 

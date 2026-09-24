@@ -6,8 +6,8 @@ behavior: core
 trigger: always
 in-scope-subaspects: [problem-motivation, target-users-personas, goals-success-criteria, capability-register, constraints-assumptions, risks]
 current-rung: contract-grade
-status: draft
-version: 0.5.0
+status: published
+version: 0.6.0
 ---
 
 # Product & Requirements — cyd-sim-dash

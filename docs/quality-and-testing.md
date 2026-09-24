@@ -6,8 +6,8 @@ behavior: core
 trigger: always
 in-scope-subaspects: [test-pyramid-test-types, coverage-map, real-flow-e2e-standard, quality-bars-gates, test-data-strategy, specialized-testing, manual-exploratory]
 current-rung: contract-grade
-status: draft
-version: 0.9.0
+status: published
+version: 0.10.0
 ---
 
 # Quality & Testing — cyd-sim-dash

@@ -6,8 +6,8 @@ behavior: baseline
 trigger: always (source-provenance scaled by code_authorship: model-authored)
 in-scope-subaspects: [license-ip-compliance, source-provenance]
 current-rung: contract-grade
-status: draft
-version: 0.5.0
+status: published
+version: 0.6.0
 ---
 
 # Governance & Compliance — cyd-sim-dash
