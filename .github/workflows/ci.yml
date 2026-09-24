@@ -88,10 +88,13 @@ jobs:
       # files keeps every decision in code that builds anywhere.
       #
       # The Framework compiler ships with the Windows runner, so there is nothing to install.
+      - name: No stray control characters
+        run: python tools/check_no_control_chars.py
+
       - name: Build and run the adapter conformance suite
         shell: pwsh
         run: |
-          $csc = "C:\Windows\Microsoft.NET\Framework644.0.30319\csc.exe"
+          $csc = "C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe"
           if (-not (Test-Path $csc)) { throw "Framework C# compiler not found at $csc" }
           New-Item -ItemType Directory -Force plugin/build | Out-Null
           $src = @(Get-ChildItem -Recurse plugin/src/core -Filter *.cs | % { $_.FullName }) +
