@@ -7,7 +7,7 @@ trigger: always
 in-scope-subaspects: [test-pyramid-test-types, coverage-map, real-flow-e2e-standard, quality-bars-gates, test-data-strategy, specialized-testing, manual-exploratory]
 current-rung: contract-grade
 status: draft
-version: 0.8.0
+version: 0.9.0
 ---
 
 # Quality & Testing — cyd-sim-dash
@@ -288,6 +288,7 @@ a persona this set contains.
 | Covered by | Contract |  | Covered by | Contract |
 |---|---|---|---|---|
 | n/a — the approach the whole product embodies | `ADR-FIRST-PARTY-PLUGIN` |  | X8 | `ADR-ARDUINO-OTA` |
+| an OTA performed while the panel is receiving live telemetry — the condition that produced the defect | `ADR-OTA-EXCLUSIVE` |  |  |  |
 | I7 · I8 | `ADR-DEVICE-INITIATED` |  | n/a — a library choice; X8 proves its version is recorded | `ADR-TFT-ESPI` |
 | I1 | `ADR-JSON-WIRE` |  | R5 | `ADR-TWO-TASKS` |
 | R2 | `ADR-ADAPTER-MODULES` |  | R7 | `ADR-DIRTY-REGIONS` |
@@ -315,6 +316,7 @@ named forcing in the catalogue itself.
 | D2 · I10 | `ERR-OUT-OF-ORDER` |  | I12 · I10 | `ERR-PORTAL-VERIFY` |
 | D4 · A5 · I10 | `ERR-LINK-SILENT` |  | U11 · I10 | `ERR-AUTH-FAILED` |
 | I14 · I10 | `ERR-UNKNOWN-PATH` |
+| n/a on this hardware — `S8` establishes that nothing above 1472 bytes reaches the application, so the condition cannot be provoked here; the counter is asserted by the unit tier instead | `ERR-OVERSIZED` |
 | I10 · U8 | `ERR-HOST-UNRESOLVED` |  | I10 — **PC-side surface only**; the device cannot observe it, which the catalogue records as a known limitation | `ERR-PUBLISH-FAILED` |
 | R6 · I10 | `ERR-WIFI-LOST` |  | D8 · I10 | `ERR-CONFIG-UNREADABLE` |
 
@@ -334,6 +336,7 @@ named forcing in the catalogue itself.
 | U8 | `SCREEN-LINK` |  | U10 · R6 · A6 | `JOURNEY-RECOVERY` |
 | I11 · I12 · A9 | `SCREEN-PORTAL` |  | U10 · A7 | `JOURNEY-RECONFIG` |
 | U11 · A7 | `SCREEN-CONFIG` |  | U10 · I6 | `JOURNEY-VERSION-MISMATCH` |
+| A9 · U10 | `SCREEN-SETUP` |  | manual pass during an OTA | `SCREEN-UPDATE` |
 
 **Security assertions** — mostly negative, and a negative assertion still owes a check: asserting
 the contracted *absence* of a control is what makes adding one later a deliberate change.

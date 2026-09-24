@@ -282,8 +282,7 @@ remaining levers are the SPI clock and the flashed area, both of which have cost
 before spending them.
 
 The buffer is 122 KB and WiFi has already taken its share of the heap, so the allocation is allowed
-to fail and the direct-draw path remains. `API-STATE` reports `bufferedDraw`, because on a device
-with no serial there is otherwise no way to know which path is running — and it earned that place
+to fail and the direct-draw path remains. `API-STATE` reported `bufferedDraw` while that path existed — and it earned that place
 immediately: the 16-bit attempt failed on the real device, and the field said so rather than the
 panel simply misbehaving.
 
@@ -299,7 +298,8 @@ state was correct throughout, the endpoint answered normally, and `bufferedDraw`
 `true`. Only the glass was wrong.
 
 The depth chain is now 16-bit, then 4-bit, and never 8-bit: besides the indexing question, RGB332
-would band the ramp blend, which `U4` forbids outright. Which mode is active is tracked in a flag
+would have banded the blend that `U4` required at the time. `U4` now mandates discrete stops, so
+that particular argument has expired even though the conclusion has not. Which mode is active is tracked in a flag
 rather than inferred, because the two take different arguments and **neither complains about the
 other** — an indexed sprite drawn with RGB565 values renders in whatever colours those numbers
 happen to index, and a full-colour sprite drawn with indices renders black on black.

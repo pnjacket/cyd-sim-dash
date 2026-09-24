@@ -24,7 +24,8 @@ constexpr int kRightBarX  = kWidth - kBarWidth;   // 288
 constexpr int kGearX      = kBarWidth;            // 32
 constexpr int kGearWidth  = kWidth - 2 * kBarWidth;  // 256
 
-// Colours, RGB565. The ramp runs green -> amber -> red as a continuous blend; a lit bar is white,
+// Colours, RGB565. The ramp steps through discrete stops - unlit, green, yellow, amber - and red is reserved
+// for the flash; a lit bar is white,
 // which is the only colour that survives every point of that ramp plus the flash and the black
 // at rest.
 // The shift cue is two bands at the top and bottom of the gear region rather than the whole
@@ -72,7 +73,8 @@ void drawLink(LinkState state);
 // same strings the panel shows, rather than a second set that can drift.
 const char* linkLine(LinkState state);
 
-// Blend along the ramp: 0.0 -> green, 0.5 -> amber, 1.0 -> red.
+// The ramp colour for a position in the window. Four discrete stops, the lowest unlit:
+// 0.00 black - 0.20 green - 0.47 yellow - 0.73 amber. Red belongs to the flash alone.
 uint16_t rampColour(float position);
 
 // SCREEN-DRIVING: all four elements at once - gear glyph, background ramp or flash, and the two

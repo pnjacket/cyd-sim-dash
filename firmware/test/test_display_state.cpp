@@ -251,7 +251,7 @@ static void test_freshness_gates_rendering() {
 }
 
 static void test_no_per_title_branch() {
-  section("INV-NO-TITLE-BRANCH");
+  section("COMPONENT-STATE: no per-title branch");
   Frame a = liveFrame();  strcpy(a.titleId, "iRacing");
   Frame b = liveFrame();  strcpy(b.titleId, "SomeOtherSim");
   LinkInputs in = liveInputs();
@@ -264,9 +264,9 @@ static void test_no_per_title_branch() {
 static void test_flash_cadence() {
   section("the flash runs at 3 Hz, 50% duty, derived from the clock");
 
-  // U5 measures this from slow-motion video on real glass, because +/-10% at 3 Hz is not
-  // resolvable by eye. That check proves the panel; this one proves the arithmetic, so a failure
-  // on the glass can be attributed to the renderer rather than to the rate.
+  // U5's instrumented measurement was waived by the operator on 2026-09-23, who judged the rate
+  // acceptable by eye. So this is now the ONLY evidence for the rate: it proves the arithmetic,
+  // and nothing proves the panel matches it.
   CHECK(kFlashPeriodMs == 333, "the period is 333 ms, i.e. 3 Hz");
   const uint32_t period = kFlashPeriodMs;
 

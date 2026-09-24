@@ -7,6 +7,21 @@
 # Authoritative contract text lives in docs/. This file holds locators only and never restates a
 # contract. A locator that no longer resolves is drift, and drift is adjudicated, not auto-fixed.
 
+# Which contract kinds this map undertakes to bind.
+#
+# Declared because an undeclared map is bind-all, and a bind-all map reports every doc-defined
+# contract of a code-realizable kind as a coverage gap - which buried the real gaps under dozens of
+# contracts belonging to slices that simply are not built yet.
+#
+# Kinds deliberately NOT bound:
+#   SEC-*  postures rather than behaviours (SEC-LAN-TRUSTED, SEC-NO-PERSONAL-DATA and the other
+#          negative assertions have no code to point at, by construction)
+#   ERR-*  bound only where a named handler exists; most are conditions detected inline, and
+#          pointing every row at the same function would be indexing theatre
+#   SCREEN-PORTAL / UIF-PORTAL  the form is WiFiManager's, an external dependency
+coverage:
+  bound-kinds: [CAP, COMPONENT, ENTITY, EVT, API, SCREEN, UIF, INV, ADR, DEP, OUT, CONFORMANCE]
+  curated: true
 authored_against: v1.2.0
 product: cyd-sim-dash
 
@@ -164,8 +179,8 @@ bindings:
     - path: THIRD-PARTY-NOTICES.md
       symbol: ArduinoJson        # the mitigation is the version pin, not code
   ERR-UNKNOWN-PATH:
-    - path: firmware/src/state_api.cpp
-      symbol: handleNotFound
+    - path: firmware/src/web.cpp
+      symbol: handleNotFound      # moved here when the HTTP server got its own component
 
   # --- slices 11-14: the driving screen ------------------------------------------
   SCREEN-DRIVING:
@@ -173,12 +188,12 @@ bindings:
       symbol: cyd::panel::drawDriving
   CAP-GEAR:
     - path: firmware/src/panel.cpp
-      symbol: cyd::panel::drawDriving   # auto-sizes: font 8 for one glyph, font 7 for two
+      symbol: cyd::panel::drawDriving   # one proportional face, sized once against the widest gear
   CAP-SHIFT:
     - path: firmware/src/display_state.cpp
       symbol: cyd::flashOn              # the 3 Hz cadence, in the engine so it is host-testable
     - path: firmware/src/panel.cpp
-      symbol: cyd::panel::rampColour    # the continuous blend
+      symbol: cyd::panel::rampColour    # four discrete stops; the lowest is unlit
   CAP-SPOTTER-LEFT:
     - path: firmware/src/panel.cpp
       symbol: cyd::panel::drawDriving   # bars painted last, so U6 holds by draw order
@@ -205,3 +220,17 @@ bindings:
   SEC-ERASE-OVERWRITE:
     - path: firmware/src/config.cpp
       symbol: cyd::config::erase    # overwrites before deleting; S7 proves it by dumping flash
+
+  # --- drift realignment 2026-09-23: contracts minted for behaviour already built ------
+  SCREEN-SETUP:
+    - path: firmware/src/panel.cpp
+      symbol: cyd::panel::drawPortal
+  SCREEN-UPDATE:
+    - path: firmware/src/panel.cpp
+      symbol: cyd::panel::drawMessage    # raised by the OTA onStart callback
+  ADR-OTA-EXCLUSIVE:
+    - path: firmware/firmware.ino
+      symbol: g_otaInProgress            # the loop returns early while an update transfers
+  ERR-OVERSIZED:
+    - path: firmware/src/net.cpp
+      symbol: cyd::net::poll             # drained and counted without being parsed

@@ -7,7 +7,7 @@ trigger: always
 in-scope-subaspects: [http-rpc-api-surface, event-surface, ui-entrypoints, error-model-catalog, versioning-compatibility]
 current-rung: contract-grade
 status: draft
-version: 0.7.0
+version: 0.8.0
 ---
 
 # Interfaces & Contracts — cyd-sim-dash
@@ -226,7 +226,7 @@ and does not save. They correct the address and it succeeds.
 
 | ID | Element | Owner · serves | Request | Response projection | Errors · side-effects |
 |---|---|---|---|---|---|
-| `API-STATE` | `GET /state` on the device's LAN address | `COMPONENT-WEB` · serves `CAP-LINKSTATE` and the test surface | No parameters, no body — so the bar's default-and-empty-input rule is satisfied vacuously and is recorded as such | JSON projection of `ENTITY-DISPLAYSTATE`: `gearGlyph` string or `null` · `shiftPhase` string · `rampPosition` number 0–1 or `null` · `barLeft` bool · `barRight` bool · `linkState` string **or `null` while the driving screen is showing** · `configuredHost` string · `lastFrameAgeMs` int or `null` · and four counters, each an unsigned integer counted **since boot and not persisted**: `malformedCount` · `fieldRangeCount` · `outOfOrderCount` · `versionRejectedCount` | No authentication, so no auth error. A malformed request path returns the uniform error rendering, never a raw framework page. **Read-only: no side-effects of any kind** |
+| `API-STATE` | `GET /state` on the device's LAN address | `COMPONENT-WEB` · serves `CAP-LINKSTATE` and the test surface | No parameters, no body — so the bar's default-and-empty-input rule is satisfied vacuously and is recorded as such | JSON projection of `ENTITY-DISPLAYSTATE`: `gearGlyph` string or `null` · `shiftPhase` string · `rampPosition` number 0–1 or `null` · `barLeft` bool · `barRight` bool · `linkState` string **or `null` while the driving screen is showing** · `configuredHost` string · `lastFrameAgeMs` int or `null` · and **five** counters, each an unsigned integer counted **since boot and not persisted**: `malformedCount` · `fieldRangeCount` · `outOfOrderCount` · `versionRejectedCount` · `oversizedCount`.<br><br>**Plus seven diagnostic fields added 2026-09-22/23** under the additive rule below, which consumers must ignore if unknown: `firmwareVersion` · `deviceId` — so a failing test run can say which binary it was talking to; `lastDrawUs` · `worstDrawUs` · `drawCount` — render timing, which is how the shift-cue tearing was diagnosed after two reasoned fixes had failed; `uptimeMs` · `resetReason` — which distinguish an intended restart from a crash, a watchdog or a **brownout**, the last being a power-supply fault that is otherwise indistinguishable from a firmware one | No authentication, so no auth error. A malformed request path returns the uniform error rendering, never a raw framework page. **Read-only: no side-effects of any kind** |
 
 ### Data-entry surfaces
 
@@ -276,6 +276,7 @@ log — classified apart above, for a cause rather than by choice.
 | `ERR-PORTAL-VERIFY` | The portal's verification sequence fails at a named step | hard · form states which step failed and what to check | Submit a wrong passphrase, then a wrong host, then with the plugin stopped · integration |
 | `ERR-AUTH-FAILED` | Incorrect credential presented to the configuration page | hard · page rejects and re-prompts | Submit a wrong credential · integration |
 | `ERR-UNKNOWN-PATH` | A request to any HTTP path the device does not serve, on either the portal or the LAN surface | hard · the uniform error rendering, never the framework's own default page | Request an unrouted path · integration |
+| `ERR-OVERSIZED` | A datagram larger than the 2 KB input bound arrives and is discarded **before parsing** | soft · counted only, no screen — it is not a condition the driver can act on | Replay tool emits an oversized payload · integration. **Note `S8`**: on this hardware nothing above 1472 bytes reaches the application at all, so the guard cannot fire and the counter cannot increment. The row exists because the counter is human-visible on the configuration page and every visible counter owes an owner |
 | `ERR-PUBLISH-FAILED` | The publisher's socket cannot send | hard, on the PC side · logged once per cause in SimHub's log | Bind the port in another process, then start the plugin · integration |
 
 The last row is the one whose surface is on the PC rather than the panel, and it is recorded as a

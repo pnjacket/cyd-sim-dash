@@ -7,7 +7,7 @@ trigger: always
 in-scope-subaspects: [problem-motivation, target-users-personas, goals-success-criteria, capability-register, constraints-assumptions, risks]
 current-rung: contract-grade
 status: draft
-version: 0.4.0
+version: 0.5.0
 ---
 
 # Product & Requirements — cyd-sim-dash
@@ -206,7 +206,7 @@ This concern owns the root of the traceability web and consumes little. What it 
 **A race stint.** The device is powered with the rig. It joins WiFi, resolves the configured PC
 host, and registers. The operator starts iRacing; SimHub loads; the iRacing adapter begins
 resolving frames and the plugin streams them. The panel shows the gear large and centred, the
-background neutral at low RPM, ramping green through amber to red as revs climb, flashing at the
+background neutral at low RPM, stepping the bands green, yellow, amber as revs climb, flashing at the
 shift point. Mid-race a car draws alongside on the left and the left bar lights until it clears.
 The session ends, telemetry stops, and the panel returns to the idle screen.
 
@@ -294,7 +294,7 @@ are not.
 |---|---|---|
 | A1 | The operator records each success criterion as met or not met from ordinary use | all `SUCCESS-*` except setup-unaided |
 | A2 | With the sim running, every gear the car offers — including neutral and reverse — renders at the centre and is legible from the driving position | `CAP-GEAR` |
-| A3 | Sweeping RPM from idle to the limiter produces a monotonic ramp that begins at the lower shift point, flashes at the upper one, and continues flashing while held above it | `CAP-SHIFT` |
+| A3 | Sweeping RPM from idle to the limiter leaves the bands unlit through the lowest fifth of the window, then steps them green, yellow, amber, then flashes at the upper threshold and continues flashing while held above it.<br><br>**Amended 2026-09-23 to match the shipped behaviour, adjudicated by the operator.** This previously read "a monotonic ramp that begins at the lower shift point", which described the pre-retune design and contradicted the amended `U4` in the same breath — two checks on one capability disagreeing. The cue deliberately starts *above* the lower shift point now: the window is narrow and sits near the top of the rev range, so lighting it from the bottom meant the bands were on almost continuously | `CAP-SHIFT` |
 | A4 | With the spotter reporting a car on each side in turn, and on both sides at once, the correct bar or bars light and clear | `CAP-SPOTTER-LEFT`, `CAP-SPOTTER-RIGHT` |
 | A5 | Stopping the plugin mid-session causes the panel to leave the driving screen and show the link screen naming the condition; the configured address and packet age are read from the configuration page, not from the panel | `CAP-LINKSTATE` |
 | A6 | Disconnecting WiFi mid-session causes the device to show the idle screen and rejoin unaided, with no reboot | `CAP-LINKSTATE` |

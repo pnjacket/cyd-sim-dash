@@ -7,12 +7,12 @@ trigger: interactive_ui
 in-scope-subaspects: [navigation-ia-contract, screen-specifications, states, user-journeys]
 current-rung: contract-grade
 status: draft
-version: 0.4.0
+version: 0.6.0
 ---
 
 # User Experience — cyd-sim-dash
 
-> Five screens, and the ambient states of the one that matters at 200 km/h.
+> Seven screens, and the ambient states of the one that matters at 200 km/h.
 
 ## Purpose & Scope
 
@@ -33,7 +33,8 @@ This concern owns the screens, their layout geometry, their states, and the jour
   because the subject does exist — other CYD variants have different panels. [FUTURE-SCOPE]
   Re-entry: replace the absolute pixel values here with a layout derived from panel dimensions
   reported at boot.
-- **Accessibility is out of scope for v1.** The classic green–amber–red ramp was chosen knowingly.
+- **Accessibility is out of scope for v1.** The classic green–yellow–amber ramp, with red reserved
+  for the flash, was chosen knowingly.
   [FUTURE-SCOPE] Re-entry: a selectable colourblind-safe palette, and a measured contrast contract
   for the glyph. Dictum records an advisory scope warning for a UI product with accessibility
   fully out; it blocks nothing. **One safety-adjacent decision was nevertheless taken deliberately
@@ -48,7 +49,7 @@ This concern owns the screens, their layout geometry, their states, and the jour
 
 ### Navigation / IA contract
 
-Five screens, minted in *Contracts*. Transitions are driven by device state rather than by user
+Seven screens, minted in *Contracts*. Transitions are driven by device state rather than by user
 action, with one exception: the configuration page, which a person opens deliberately.
 
 Two of the five are served over HTTP and therefore have real routes; the three panel screens have
@@ -69,15 +70,33 @@ fault and version mismatch. Nine conditions, one layout.
 | Right bar | x 288–319, y 0–239 | 32 px wide, full height |
 | Gear region | x 32–287, y 0–239 | 256 × 240 for the glyph |
 
-The **background ramp fills the entire panel**, bar strips included. A lit bar paints **white** over
-its strip; an unlit bar simply shows the ramp, so the binary is white-versus-whatever-the-ramp-is.
-That is why bars are painted last and why their colour had to survive the whole palette.
+The **shift cue occupies two bands**, each `kBandHeight` = 40 px, at the top and bottom of the gear
+region only. It never reaches the bar strips. The centre of the gear region — 256 x 160 — is
+**permanently black**.
 
-The **gear glyph** is centred in the gear region, drawn **white with a black outline** thick enough
-to read against any background the ramp produces, including mid-flash. It is auto-sized: a single
-character fills the available height; two characters are sized to fit 256 px wide with margin.
-Outline rather than luminance-switching, because a switch point visible mid-ramp would flip the
-glyph at precisely the wrong moment.
+A lit bar paints **white** over its strip; an unlit bar is **black**. Because the bands are confined
+to the gear region, a bar is now untouched by the shift cue as a matter of geometry rather than of
+draw order — though bars are still painted last, so the rule holds twice over.
+
+The **gear glyph** is centred in the black area between the bands, drawn plain **white on black**.
+No outline: it was specified when the ramp filled the whole panel and the glyph had to survive every
+colour the ramp could produce. With the centre permanently black the glyph has exactly one
+background, and an outline would be decoration.
+
+It is **sized once**, against the widest value the gear domain contains, and every gear then renders
+at that size. Sizing per-glyph would make a one-character gear larger than a two-character one, so
+the display would change size as well as content while shifting.
+
+`SCREEN-SETUP` and `SCREEN-UPDATE` were **added 2026-09-23**, documenting behaviour that had been
+built without a doc pass. `SCREEN-SETUP` answers a question this concern had left open: `SCREEN-PORTAL`
+is an HTTP form, and none of `SCREEN-LINK`'s nine conditions is true while the device is
+unprovisioned — so the glass had nothing honest to show at exactly the moment an adopter most needs
+telling what to do. `SCREEN-UPDATE` exists because an update takes the panel out of service for
+several seconds and a blank screen during it reads as a failure.
+
+**Amended 2026-09-22/23** from a full-panel ramp with an outlined glyph. The reasons are recorded at
+`U4`, `U5` and `CAP-SHIFT`; in short, a full-panel repaint is ~12 ms against a ~15 ms panel refresh
+and tore visibly, and the lower part of a narrow window is better unlit than lit.
 
 The other four screens carry text and glyphs at ordinary sizes; they are read at rest, not at
 speed.
@@ -89,12 +108,15 @@ an arriving frame rather than by a user action:
 
 - **Neutral** — below the ramp start. Background **pure black**, which throws least light at night
   and makes the first green maximally noticeable.
-- **Ramping** — between the two thresholds. Colour **interpolates continuously** green → amber →
-  red across the window, so the background conveys roughly how far through you are.
-- **Flashing** — above the flash threshold. Background alternates red and black at **3 Hz, 50 %
-  duty**, continuing for as long as RPM stays there. No separate over-rev state; the flash does not
-  time out.
-- **Edge bars** — independently white or ramp-coloured. Both may be lit at once.
+- **Ramping** — between the two thresholds. The bands step through **four discrete stops**: unlit for
+  the lowest fifth of the window, then green, yellow and amber. Discrete rather than blended because
+  every colour change is a band repaint and therefore a visible sweep; unlit at the bottom because
+  the window is narrow and sits near the top of the rev range, so a lit bottom stage meant the bands
+  were on almost continuously.
+- **Flashing** — above the flash threshold. The **bands** alternate red and black at **3 Hz, 50 %
+  duty**, continuing for as long as RPM stays there. The centre does not change. No separate
+  over-rev state; the flash does not time out.
+- **Edge bars** — independently white or black. Both may be lit at once.
 - **Gear** — any value in its domain, including neutral and reverse.
 - **Element unavailable** — an element the running title cannot supply, arriving as `null`. In v1,
   with iRacing the only title, this should never occur in normal use, which makes it a useful
@@ -120,11 +142,13 @@ one traverses screens that would otherwise never be exercised.
 - [REVISIT] The nine link-state icons are specified as primitive compositions rather than drawn
   artwork. They should be judged together on the panel once drawn — nine glyphs that are each
   sensible alone can still be confusable as a set.
-- [REVISIT] **Night brightness.** A full-screen ramp with no auto-dim will be bright in a dark
-  room. Pure black at rest and a 3 Hz rather than faster flash both help; the night-comfort success
+- [REVISIT] **Night brightness.** The ramp is now two 40 px bands rather than the full screen, so
+  the lit area is roughly a third of what this concern was written about, and the centre is black.
+  Still no auto-dim. Pure black at rest and a 3 Hz rather than faster flash both help; the night-comfort success
   criterion tests precisely this, and the light sensor remains unused by decision.
-- [REVISIT] The exact ramp interpolation stops. Continuous blend is specified; whether green→amber
-  and amber→red split the window evenly is a tuning matter best settled on the rig.
+- ~~The exact ramp interpolation stops.~~ **Settled on the rig, 2026-09-23.** There is no
+  interpolation: four discrete stops at 0.20 / 0.47 / 0.73 of the window, the lowest unlit. The
+  question of where the stops fall was indeed a tuning matter and was tuned by driving it.
 
 ## Dependencies & Cross-references
 
@@ -137,12 +161,12 @@ one traverses screens that would otherwise never be exercised.
 
 ## Examples / Worked scenarios
 
-**Approaching the shift point with a car alongside.** RPM crosses the ramp start; the background
-leaves black and begins blending green. A car draws level on the left and the left strip turns
-white. RPM keeps climbing, the background reaching red as it nears the upper threshold. It crosses,
-and the panel begins alternating red and black three times a second — with the left strip still
-solid white through both phases, because bars are painted last. The gear glyph, white with its
-black outline, stays readable throughout.
+**Approaching the shift point with a car alongside.** RPM crosses the ramp start; nothing changes
+yet, because the lowest fifth of the window is unlit. A fifth of the way in the bands turn green. A
+car draws level on the left and the left strip turns white. RPM keeps climbing and the bands step to
+yellow, then amber. It crosses the upper threshold and the bands begin alternating red and black
+three times a second — with the left strip still solid white through both phases, and the centre
+black throughout. The gear glyph, white on that black centre, stays readable the whole way.
 
 **Booting cold.** Power on. The panel shows the device identity and firmware version briefly, then
 hands to the link-state screen showing *joining WiFi*, then *waiting for PC*. Frames arrive and it
@@ -167,10 +191,11 @@ page — see Design Decisions.
 | Decision | Rationale | Consequence accepted |
 |---|---|---|
 | Flash at **3 Hz**, 50 % duty | Full-field flashing between roughly 3 and 60 Hz is the range associated with photosensitive seizures, and general guidance caps large-area flashing at three per second. The product may be shared publicly | Slightly less urgent than a faster flash. Taken deliberately rather than by default, despite accessibility being out of scope |
-| White glyph with a **black outline** | Reads against every background the ramp produces with no conditional logic, and never needs revisiting when the palette changes | A heavier-looking glyph than a plain fill |
+| ~~White glyph with a **black outline**~~ → **plain white on black**, reversed 2026-09-23 | The outline existed so the glyph would read against every colour a full-panel ramp could produce. The shift cue is now two bands that never touch the centre, so the glyph has exactly one background and the outline solved a problem that no longer exists | Nothing, as built. If the centre were ever to carry colour again the outline would have to come back, and this row is the reason why |
 | Bars **32 px, full height, white** | Largest practical area and highest luminance, which is what peripheral vision actually catches; white survives green, amber, red and black alike | Bars can never be red, amber or green. More likely to draw the eye when you would rather it did not |
 | Bars painted **last, never suppressed** | A car alongside at the shift point is the moment both signals matter most | The bar colour constraint above follows from this |
 | ~~**Continuous blend** ramp~~ → **four discrete stops**, reversed 2026-09-22 | The original reasoning was that a blend conveys *how far* through the window you are rather than merely which band. Measured against real glass, the cost was not worth it: a blend repaints on every RPM step, each repaint is a visible sweep, and under acceleration the panel never settles. The operator judged the constant sweeping more distracting than the extra precision was useful | A stepped change is more noticeable peripherally than a smooth one — which the original decision counted as a drawback and is arguably an advantage for a shift cue. Precision between stages is lost, and nothing was using it |
+| **Retuned again on the rig**, 2026-09-23: lowest stop unlit, red stop removed, remaining stops widened | Driving it showed what a bench could not. The window is narrow and sits near the top of the rev range, so ordinary driving is almost always inside it — a lit bottom stage meant the bands were on continuously, and a cue that is always on is not a cue. The red stop sat immediately below a flash that is also red, so it announced a change and then announced the same colour again | The bands say nothing at all for the lowest fifth of the window. That is deliberate, and it means the cue starts later than the shift-point arithmetic alone would suggest |
 | **Pure black** at rest | Least light at night, strongest contrast when green first appears | At a glance, an idling panel can look switched off — contradicted by the gear glyph |
 | Link screen is **icon plus one line**; detail lives on the configuration page | Keeps the panel glanceable and uncluttered | **Narrows a success criterion.** The panel names the condition but not the configured address, so diagnosing a wrong-but-resolvable host needs the configuration page. Product & Requirements' link-diagnosable criterion carries this as a traced exception |
 | **Boot screen** showing identity and firmware | Firmware version is exactly what you want when a version mismatch is the suspect, and it is visible before anything else can fail | One more screen, briefly delaying the first useful state |
@@ -186,6 +211,8 @@ page — see Design Decisions.
 | `SCREEN-LINK` | Link state | Entered whenever `SCREEN-DRIVING`'s condition is unmet; leaves to it when met | none | `CAP-LINKSTATE` | consumes `EVT-FRAME` status and the local link | nine, exactly the `linkState` domain owned by Domain & Data: `drivingPending` · `joining` · `unresolved` · `unreachable` · `stale` · `noSim` · `unsupportedTitle` · `adapterFault` · `versionMismatch` | none |
 | `SCREEN-PORTAL` | Provisioning | HTTP `/` on the device's own access point. Raised when unprovisioned, when the network cannot be joined, or when stored configuration is unreadable | none — the access point is the boundary | `CAP-PROVISION` | `UIF-PORTAL` | form · validating · per-step verification progress · per-step failure · success | owned by `UIF-PORTAL` |
 | `SCREEN-CONFIG` | Configuration page | HTTP `/` on the device's LAN address while connected. Opened deliberately | the device credential | `CAP-RECONFIG` | `UIF-CONFIG` | unauthenticated · form · soft-fault counters · erase confirmation · saved | owned by `UIF-CONFIG` |
+| `SCREEN-SETUP` | Panel-side provisioning | Shown on the glass whenever the provisioning access point is raised — unprovisioned, unable to join, or stored configuration unreadable | none | `CAP-PROVISION` | none; it renders local state | one: the access-point name and what to do with it | none |
+| `SCREEN-UPDATE` | Firmware update in progress | Shown from the moment an over-the-air update begins transferring until the device reboots | none | none — it serves `ADR-ARDUINO-OTA` | none | one | none |
 
 Every panel screen has **zero interactive controls**, so the standard's default/empty-input-state
 requirement falls entirely to the two HTTP screens, where it is owned by the data-entry contracts.
@@ -241,6 +268,6 @@ not link problems at all: the link is fine and something beyond it is wrong.
 | U13 | The nine icons are viewed together at panel size from the driving position and each is identifiable without reading its line | icon distinguishability as a set |
 | U9 | Power-on shows device identity and firmware version before any connection attempt is reported | `SCREEN-BOOT` |
 | U10 | Each of the five journeys is walked end to end, and every screen transition occurs without a reboot or a user action except where the journey specifies one | `JOURNEY-*` |
-| U11 | The configuration page is unreachable without the credential, and the erase action requires confirmation | `SCREEN-CONFIG` guard |
+| U11 | The configuration page is unreachable without the credential **once one is set**, and the erase action requires confirmation. On a device whose credential is still empty the page is reachable and refuses to save until one is supplied — the recovery exception in `SEC-CREDENTIAL-POLICY`. Both paths are exercised | reconfiguration is gated |
 | U12 | At rest below the ramp threshold the background is pure black | neutral state |
 

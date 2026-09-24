@@ -35,19 +35,6 @@ uint32_t g_worstDrawUs = 0;
 // were both judged by eye and both fixed the wrong thing.
 uint32_t g_drawCount = 0;
 
-// RGB565 channel-wise blend. Interpolating in 565 space rather than converting to 888 and back
-// is slightly cruder but costs nothing on an ESP32 and is imperceptible across a ramp this wide.
-uint16_t blend(uint16_t a, uint16_t b, float t) {
-  if (t <= 0.0f) return a;
-  if (t >= 1.0f) return b;
-  const int ar = (a >> 11) & 0x1F, ag = (a >> 5) & 0x3F, ab = a & 0x1F;
-  const int br = (b >> 11) & 0x1F, bg = (b >> 5) & 0x3F, bb = b & 0x1F;
-  const int r = ar + static_cast<int>((br - ar) * t + 0.5f);
-  const int g = ag + static_cast<int>((bg - ag) * t + 0.5f);
-  const int bl = ab + static_cast<int>((bb - ab) * t + 0.5f);
-  return static_cast<uint16_t>((r << 11) | (g << 5) | bl);
-}
-
 // The text multiplier for the gear glyph. Computed once, then used for every gear.
 //
 // Two things were making the glyph smaller than it needed to be.

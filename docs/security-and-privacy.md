@@ -7,7 +7,7 @@ trigger: always (raised by security_risk: secrets, network)
 in-scope-subaspects: [trust-boundaries, secrets-credential-handling, authentication-mechanism, authorization, threat-model, encryption, data-protection-mechanisms-per-sensitive-field]
 current-rung: contract-grade
 status: draft
-version: 0.5.0
+version: 0.6.0
 ---
 
 # Security & Privacy — cyd-sim-dash
@@ -192,7 +192,7 @@ USB cable. See Open Questions.
 | `SEC-NO-SUBSCRIPTION-AUTHZ` | Registration is unauthenticated. Any host on the LAN may register and will be sent frames | negative, asserted deliberately |
 | `SEC-NO-SOURCE-CHECK` | Telemetry frames are accepted regardless of source address | negative, asserted deliberately |
 | `SEC-STATE-OPEN` | The state endpoint requires no credential and is present in release builds | negative, asserted deliberately |
-| `SEC-CREDENTIAL-POLICY` | One shared credential gates the configuration page and the OTA path. It must be non-empty. No minimum length and no composition rule is imposed, and no default is shipped | hygiene |
+| `SEC-CREDENTIAL-POLICY` | One shared credential gates the configuration page and the OTA path. It must be non-empty, and **no default is shipped** — that is the load-bearing half. No minimum length and no composition rule is imposed.<br><br>**Recovery exception, adjudicated by the operator 2026-09-23.** A device whose stored credential is empty serves the configuration page *unauthenticated*, and its OTA path is likewise unauthenticated, until a credential is set. The page refuses to save anything else while the credential is blank, so the first save necessarily repairs the state.<br><br>The alternative was a shipped default password, and that is worse: a default is a known credential on every unit, it survives until someone changes it, and nothing forces anyone to. An empty credential is visibly wrong, blocks its own persistence, and is repaired by the first interaction. The exposure is bounded to a device on the operator's own LAN that has not yet been configured — which `SEC-LAN-TRUSTED` already treats as the trust boundary | hygiene |
 | `SEC-OTA-WINDOW` | The OTA path listens only during a window opened from the configuration page, closing **30 minutes** after it is opened. Outside that window no firmware-flashing path is listening | hygiene |
 | `SEC-OTA-IMAGE` | OTA images are checked only by the framework's own transfer integrity. No signing or provenance verification is performed | negative |
 | `SEC-STORAGE-PLAIN` | Secrets are stored unencrypted in NVS. Physical access with a cable yields them | negative, exposure named |
@@ -234,7 +234,7 @@ the absence is recorded here so it reads as a finding rather than an oversight.
 | S1 | A packet capture across a full session, including a configuration-page login, shows no traffic leaving the LAN and no external DNS lookup — and shows the credential and telemetry in plaintext, confirming the transit posture rather than assuming it | `SEC-NO-EGRESS`, `SEC-TRANSIT-CLEAR` |
 | S2 | A host other than the configured one registers and receives frames; a frame from an arbitrary source is accepted and displayed | `SEC-NO-SUBSCRIPTION-AUTHZ`, `SEC-NO-SOURCE-CHECK` — asserting the contracted absence so that adding a control later is a deliberate change |
 | S3 | The state endpoint responds without a credential on a release build | `SEC-STATE-OPEN` |
-| S4 | An empty credential is rejected by the portal and the configuration page; a single-character one is accepted | `SEC-CREDENTIAL-POLICY`, including its deliberate permissiveness |
+| S4 | An empty credential is **refused as a saved value** by the portal and the configuration page, and a single-character one is accepted. Separately, a device that *already holds* an empty credential serves its configuration page unauthenticated and refuses to save until one is supplied — the recovery exception. Both are exercised: the rejection on save, and the unauthenticated-but-unwritable state | `SEC-CREDENTIAL-POLICY`, including its deliberate permissiveness and its recovery exception |
 | S5 | With no window open, an OTA attempt is refused; after opening a window it succeeds; 30 minutes after opening it is refused again | `SEC-OTA-WINDOW` |
 | S6 | The configuration page rejects an incorrect credential and establishes no session — a second request without the credential is also rejected | `UIF-CONFIG` authorization, absence of sessions |
 | S7 | Flash is dumped twice: after provisioning, where both secrets are recoverable in plaintext — confirming the named exposure rather than assuming it — and again after erase, where neither is | `SEC-STORAGE-PLAIN`, `SEC-ERASE-OVERWRITE`, `SEC-FIELD-WIFI`, `SEC-FIELD-CREDENTIAL` |

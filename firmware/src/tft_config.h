@@ -60,8 +60,9 @@
 #define TFT_BL   21   // backlight
 #define TFT_BACKLIGHT_ON HIGH
 
-// Fonts. Font 8 is the large seven-segment face the gear glyph is built from; the smaller ones
-// carry the boot and link screens.
+// Fonts. The gear glyph uses a GFX free face (LOAD_GFXFF) rather than the seven-segment ones:
+// fonts 7 and 8 contain digits only, so R and N had no glyph at all. The numbered faces still carry
+// the boot, portal and link screens.
 #define LOAD_GLCD
 #define LOAD_FONT2
 #define LOAD_FONT4

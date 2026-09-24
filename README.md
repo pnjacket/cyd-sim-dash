@@ -4,7 +4,8 @@ A four-element sim-racing dashboard on an ESP32 **Cheap Yellow Display** (ESP32-
 over WiFi by a purpose-built SimHub plugin. Mounted above the wheel, it shows four things at once:
 
 - a large **gear** indicator in the centre,
-- the whole **background ramping** green → amber → red and then flashing at the shift point,
+- **two bands**, top and bottom, stepping green → yellow → amber and then flashing red at the
+  shift point,
 - a **left edge bar** when a car is alongside on the left,
 - a **right edge bar** for the right.
 
@@ -59,7 +60,8 @@ If the code and the docs disagree, the docs are the contract and the code is wro
 
 ## Building
 
-Nothing is flashable yet. When it is:
+The firmware runs on real hardware and updates over the air. What is verified and what is still
+owed are recorded in [`BUILD-STATUS.md`](BUILD-STATUS.md).
 
 - **Firmware** — Arduino IDE or `arduino-cli`, ESP32 core 3.3.12, with TFT_eSPI 2.5.43,
   ArduinoJson **7.4.3 or later** and WiFiManager 2.0.17. Exact versions matter; see

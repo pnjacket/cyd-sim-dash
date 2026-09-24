@@ -5,7 +5,9 @@
 // also what lets E2E-STANDARD clause 6 import it to compute expectations.
 //
 // It contains NO per-title logic. Everything sim-specific was resolved by a title adapter on the
-// PC before the frame crossed the wire, and INV-NO-TITLE-BRANCH forbids reintroducing it here.
+// PC before the frame crossed the wire, and COMPONENT-STATE's "no per-title branch" forbids
+// reintroducing it here. (This cited INV-NO-TITLE-BRANCH until 2026-09-23 - an ID no document
+// defines. Code does not get to mint contracts.)
 // If something in this file ever needs to know which sim is running, the adapter boundary has
 // leaked.
 //
