@@ -427,5 +427,6 @@ named in prose.
 | Q17 | With no learned address, a touch lights the panel and offers **nothing**, and no packet is sent | `INV-WAKE-NEEDS-LEARNED-MAC` |
 | Q18 | In every link state other than `unreachable`, a touch lights the panel and arms nothing | the armed-state rule |
 | Q19 | The address is learned while the PC is reachable and survives the reboot that happens when the rig powers down — asserted by power-cycling the rig, not by writing the value directly | `ENTITY-RIGADDRESS` |
+| Q21 | Changing the sim-PC address on the configuration page leaves `rigMacKnown` **false**, and an erase does the same. Asserted through `API-STATE` rather than by reading flash, because the point is that the panel now offers nothing rather than that a key is gone | `INV-RIGADDRESS-FOLLOWS-HOST` |
 | Q20 | **Against the real rig**: two touches start it and the panel reaches the driving screen unaided. This is the only check that can fail for reasons outside this product — Wake-on-LAN disabled in the rig's BIOS, fast startup defeating S5, or the adapter not retaining power — and a failure is triaged against the rig before it is triaged against the firmware | `SUCCESS-WAKE-FROM-PANEL` |
 

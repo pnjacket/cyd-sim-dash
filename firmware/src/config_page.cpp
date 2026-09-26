@@ -1,5 +1,6 @@
 #include "config_page.h"
 
+#include "rigaddr.h"
 #include "web.h"
 
 #include <WiFi.h>
@@ -273,6 +274,15 @@ void handleSave() {
   }
 
   g_live->blankAfterMinutes = static_cast<uint16_t>(blankMinutes);
+
+  // A new sim-PC address invalidates the learned hardware address. It was learned for the old one,
+  // and keeping it would aim a wake at whatever machine used to be there - which on a panel moved
+  // from a test machine to the real rig is indistinguishable from Wake-on-LAN being off in the rig's
+  // BIOS. Forgotten here rather than left to expire, because nothing expires it: the address is only
+  // ever re-learned from an accepted frame, and one from the new host would overwrite it only after
+  // arriving - which is exactly what cannot happen while the machine you are trying to wake is off.
+  if (strcmp(g_live->pcHost, host.c_str()) != 0) rigaddr::forget();
+
   strncpy(g_live->pcHost, host.c_str(), sizeof(g_live->pcHost) - 1);
   g_live->pcHost[sizeof(g_live->pcHost) - 1] = '\0';
 

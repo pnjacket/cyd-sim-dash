@@ -47,6 +47,21 @@ bool known() { return g_known; }
 const uint8_t* mac() { return g_mac; }
 uint32_t learnedAtMs() { return g_learnedAtMs; }
 
+void forget() {
+  memset(g_mac, 0, sizeof(g_mac));
+  g_known = false;
+  g_learnedAtMs = 0;
+
+  Preferences p;
+  if (!p.begin(kNamespace, /*readOnly=*/false)) return;
+  // Overwritten before removal, for the same reason config::erase() does it: deleting a key can leave
+  // the old bytes in flash, and this one names a machine.
+  const uint8_t blank[6] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+  p.putBytes(kKeyMac, blank, sizeof(blank));
+  p.remove(kKeyMac);
+  p.end();
+}
+
 bool observe(const IPAddress& addr) {
   // The ARP cache is the stack's own record of who answered at that address. Reading it rather than
   // probing means learning costs nothing and cannot fail in a way that affects the receive path:

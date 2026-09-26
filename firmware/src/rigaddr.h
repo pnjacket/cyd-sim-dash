@@ -34,6 +34,18 @@ const uint8_t* mac();
 // this exists to serve, since the rig being off is exactly why the panel is being touched.
 uint32_t learnedAtMs();
 
+// Discards the learned address, in memory and in flash.
+//
+// Called when `pcHost` changes and when the configuration is erased. Both are cases where the stored
+// address is about to become a lie: it was learned for one machine, and keeping it would aim a wake
+// at whatever was at that address before. On a panel moved from a test machine to the real rig, that
+// failure looks exactly like Wake-on-LAN being disabled in the rig's BIOS - a packet goes out, the
+// rig ignores it, and four of the five likely causes are settings on another machine.
+//
+// The erase case is also a small privacy matter: a MAC is a machine on the previous owner's LAN, and
+// an erase that leaves it behind is a gesture rather than a mechanism.
+void forget();
+
 // Looks `addr` up in the device's own ARP cache and stores what it finds. Call while the PC is known
 // to be reachable — a frame has just been accepted from it, so the cache entry is fresh.
 //

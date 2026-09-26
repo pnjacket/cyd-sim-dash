@@ -3,6 +3,8 @@
 #include <Preferences.h>
 #include <string.h>
 
+#include "rigaddr.h"
+
 namespace cyd {
 namespace config {
 namespace {
@@ -72,6 +74,10 @@ void erase() {
   p.putUShort(kKeyBlank, 0);
   p.clear();
   p.end();
+
+  // ENTITY-RIGADDRESS lives in its own namespace, so clearing this one does not touch it. It has to
+  // go too: it names a machine on this LAN, and an erase that leaves it behind is not an erase.
+  rigaddr::forget();
 }
 
 bool provisioned() {

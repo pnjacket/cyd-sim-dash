@@ -271,6 +271,13 @@ bindings:
   INV-WAKE-NEEDS-LEARNED-MAC:
     - path: firmware/src/wake.cpp
       symbol: cyd::wake::Sequence::onTouch   # !macKnown returns Lit and never arms
+  INV-RIGADDRESS-FOLLOWS-HOST:
+    - path: firmware/src/rigaddr.cpp
+      symbol: cyd::rigaddr::forget
+    - path: firmware/src/config_page.cpp
+      symbol: cyd::configpage                # on save, when the host actually changed
+    - path: firmware/src/config.cpp
+      symbol: cyd::config::erase             # and on erase, since a MAC names a machine
   EVT-WAKE:
     - path: firmware/src/wake.cpp
       symbol: cyd::wake::buildMagicPacket    # 102 octets or nothing, never a partial packet
