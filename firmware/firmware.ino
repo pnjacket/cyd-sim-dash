@@ -66,6 +66,12 @@ static bool          g_haveFrame = false;
 static bool          g_versionRejected = false;
 static uint32_t      g_lastAcceptedMs = 0;
 
+// CAP-BLANK. When the driving screen was last showing, and whether the glass is currently lit.
+// Initialised at boot so a panel that starts with the rig off blanks after the configured period
+// rather than staying lit forever waiting for a first frame it may never get.
+static uint32_t      g_lastDrivingMs = 0;
+static bool          g_backlightOn = true;
+
 // ---------------------------------------------------------------------------
 
 // Why the device last booted, in words.
@@ -146,6 +152,7 @@ void setup() {
   Serial.print("."); Serial.println(kProtocolMinor);
 
   panel::begin();
+
   panel::drawBoot(g_deviceId, kFirmwareVersion);
   Serial.println("[boot] identity screen shown");
   delay(kBootScreenMs);
@@ -177,6 +184,7 @@ void setup() {
   config::save(g_cfg);
 
   g_connectedAtMs = millis();
+  g_lastDrivingMs = g_connectedAtMs;
   Serial.print("[wifi] connected, ip ");
   Serial.println(WiFi.localIP());
   Serial.print("[config] pcHost '");
@@ -272,6 +280,8 @@ void loop() {
   ctx.uptimeMs = now;
   ctx.resetReason = resetReasonText();
   ctx.drawCount = panel::drawCount();
+  ctx.backlightOn = g_backlightOn;
+  ctx.blankAfterMinutes = g_cfg.blankAfterMinutes;
   stateapi::publish(display, ctx, g_counters);
   configpage::publishCounters(g_counters);
 
@@ -279,6 +289,22 @@ void loop() {
   // SCREEN-DRIVING is showing precisely when deriveLink yields Driving, which happens only when a
   // fresh live frame is in hand. Anything else is SCREEN-LINK. Having one rule decide both the
   // link icon and which screen shows is what keeps them from ever disagreeing.
+  // CAP-BLANK. The engine decides; this only drives the pin and remembers the transition, so the
+  // rule stays testable on the host and the loop holds no policy.
+  if (state == LinkState::Driving) g_lastDrivingMs = now;
+  const bool wantLit = backlightShouldBeOn(state, g_otaInProgress,
+                                           now - g_lastDrivingMs, g_cfg.blankAfterMinutes);
+  if (wantLit != g_backlightOn) {
+    panel::backlight(wantLit);
+    g_backlightOn = wantLit;
+    Serial.print("[panel] backlight ");
+    Serial.println(wantLit ? "on" : "off");
+
+    // Coming back from dark, nothing on the glass can be trusted to match the state - the scene was
+    // drawn before the panel went out and the link condition may have changed since.
+    if (wantLit) { panel::invalidate(); g_shown = static_cast<LinkState>(0xFF); }
+  }
+
   if (state == LinkState::Driving) {
     if (g_shown != LinkState::Driving) {
       panel::invalidate();   // coming from the link screen: the glass holds something else

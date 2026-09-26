@@ -137,6 +137,13 @@ void sendPage(const char* notice, bool noticeIsError) {
   page += host;
   page += F("\" placeholder=\"192.168.1.50\">"
             "<div class=\"hint\">The IP address or name of the PC running SimHub.</div>"
+            "<label for=\"blank\">Blank the screen after</label>"
+            "<input id=\"blank\" name=\"blank\" type=\"number\" min=\"0\" max=\"120\" value=\"");
+  page += String(g_live == nullptr ? 1 : g_live->blankAfterMinutes);
+  page += F("\">"
+            "<div class=\"hint\">Minutes with no telemetry before the backlight switches off. "
+            "<strong>0 keeps it on permanently.</strong> It lights again as soon as telemetry "
+            "returns.</div>"
             "<label for=\"cred\">Device credential</label>"
             "<input id=\"cred\" name=\"cred\" type=\"password\" placeholder=\"unchanged\">"
             "<div class=\"hint\">Gates this page and firmware updates. "
@@ -233,6 +240,24 @@ void handleSave() {
     return;
   }
 
+  // INV-BLANK-BOUND. Rejected rather than clamped: a clamped value leaves the operator believing
+  // they set something they did not, and this is a setting whose whole point is that they chose it.
+  String blankArg = s.hasArg("blank") ? s.arg("blank") : String();
+  blankArg.trim();
+  long blankMinutes = g_live->blankAfterMinutes;
+  if (blankArg.length() > 0) {
+    bool digitsOnly = true;
+    for (unsigned i = 0; i < blankArg.length(); ++i) {
+      if (!isDigit(blankArg[i])) { digitsOnly = false; break; }
+    }
+    blankMinutes = blankArg.toInt();
+    if (!digitsOnly || blankMinutes < 0 || blankMinutes > kBlankMinutesMax) {
+      sendPage("Blank the screen after must be a whole number of minutes from 0 to 120, "
+               "where 0 keeps the screen on.", true);
+      return;
+    }
+  }
+
   if (!hostLooksValid(host.c_str())) {
     sendPage("The sim PC address is required, and may contain only letters, digits, dots, "
              "hyphens and underscores.", true);
@@ -247,6 +272,7 @@ void handleSave() {
     return;
   }
 
+  g_live->blankAfterMinutes = static_cast<uint16_t>(blankMinutes);
   strncpy(g_live->pcHost, host.c_str(), sizeof(g_live->pcHost) - 1);
   g_live->pcHost[sizeof(g_live->pcHost) - 1] = '\0';
 

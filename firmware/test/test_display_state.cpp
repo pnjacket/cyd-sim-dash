@@ -292,6 +292,46 @@ static void test_flash_cadence() {
   CHECK(flashOn(1000 * period), "and a thousand periods later");
 }
 
+static void test_backlight_rule() {
+  section("CAP-BLANK: when the backlight is on");
+
+  const uint32_t min = 60000;
+
+  // Driving always lights it, however long the timer says.
+  CHECK(backlightShouldBeOn(LinkState::Driving, false, 999 * min, 1), "driving is always lit");
+
+  // The ordinary case: a non-driving state blanks once the period passes.
+  CHECK(backlightShouldBeOn(LinkState::Unreachable, false, 0, 1), "lit immediately after driving stops");
+  CHECK(backlightShouldBeOn(LinkState::Unreachable, false, min - 1, 1), "still lit just under the period");
+  CHECK(!backlightShouldBeOn(LinkState::Unreachable, false, min, 1), "dark at the period");
+  CHECK(!backlightShouldBeOn(LinkState::Unreachable, false, 10 * min, 1), "and stays dark");
+
+  // Every non-driving condition blanks - the operator chose the union, not a subset.
+  const LinkState blanking[] = {
+      LinkState::Unreachable, LinkState::NoSim, LinkState::Stale, LinkState::AdapterFault,
+      LinkState::Unresolved, LinkState::Joining, LinkState::DrivingPending,
+      LinkState::UnsupportedTitle,
+  };
+  for (LinkState l : blanking) {
+    CHECK(!backlightShouldBeOn(l, false, 5 * min, 1), "this condition blanks");
+  }
+
+  // The two exemptions.
+  CHECK(backlightShouldBeOn(LinkState::VersionMismatch, false, 999 * min, 1),
+        "versionMismatch stays lit - it is the one state that must be read");
+  CHECK(backlightShouldBeOn(LinkState::Unreachable, true, 999 * min, 1),
+        "an update in progress stays lit - a dark panel mid-transfer invites pulling the power");
+
+  // 0 disables. This is the escape hatch, so it is asserted against a deliberately absurd idle time.
+  CHECK(backlightShouldBeOn(LinkState::Unreachable, false, 4294967295u, 0),
+        "0 never blanks, even at the maximum representable idle");
+
+  // The longest configurable period still behaves, and does not wrap. 120 x 60000 is 7,200,000; a
+  // 32-bit multiply would survive that but the next person to raise the bound might not notice.
+  CHECK(backlightShouldBeOn(LinkState::Unreachable, false, 119 * min, 120), "just under 120 minutes is lit");
+  CHECK(!backlightShouldBeOn(LinkState::Unreachable, false, 120 * min, 120), "dark at 120 minutes");
+}
+
 int main() {
   printf("display-state engine — unit tier\n");
   test_gear_domain();
@@ -305,6 +345,7 @@ int main() {
   test_freshness_gates_rendering();
   test_no_per_title_branch();
   test_flash_cadence();
+  test_backlight_rule();
 
   printf("\n%d checks, %d failures\n", g_checks, g_failures);
   return g_failures == 0 ? 0 : 1;

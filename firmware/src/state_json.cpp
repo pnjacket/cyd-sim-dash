@@ -124,7 +124,8 @@ size_t render(char* out, size_t capacity,
                ",\"versionRejectedCount\":%lu,\"oversizedCount\":%lu"
                ",\"firmwareVersion\":\"%.15s\",\"deviceId\":\"%.15s\""
                ",\"lastDrawUs\":%lu,\"worstDrawUs\":%lu"
-               ",\"uptimeMs\":%lu,\"resetReason\":\"%.24s\",\"drawCount\":%lu}",
+               ",\"uptimeMs\":%lu,\"resetReason\":\"%.24s\",\"drawCount\":%lu"
+               ",\"backlightOn\":%s,\"blankAfterMinutes\":%u}",
                static_cast<unsigned long>(counters.malformed),
                static_cast<unsigned long>(counters.fieldRange),
                static_cast<unsigned long>(counters.outOfOrder),
@@ -136,7 +137,9 @@ size_t render(char* out, size_t capacity,
                static_cast<unsigned long>(context.worstDrawUs),
                static_cast<unsigned long>(context.uptimeMs),
                context.resetReason == nullptr ? "" : context.resetReason,
-               static_cast<unsigned long>(context.drawCount));
+               static_cast<unsigned long>(context.drawCount),
+               context.backlightOn ? "true" : "false",
+               static_cast<unsigned>(context.blankAfterMinutes));
   at += (n > 0) ? static_cast<size_t>(n) : 0;
 
   if (at >= capacity) at = capacity - 1;

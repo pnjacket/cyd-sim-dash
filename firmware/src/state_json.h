@@ -30,6 +30,12 @@ struct Context {
   // spontaneous reboot.
   uint32_t    uptimeMs = 0;
   const char* resetReason = "";
+
+  // CAP-BLANK. backlightOn is what distinguishes a blanked panel from a dead one, which is the
+  // whole mitigation for the trade-off that capability accepts - and it is reachable while the glass
+  // is dark, which is exactly when it is needed.
+  bool        backlightOn = true;
+  uint16_t    blankAfterMinutes = 0;
 };
 
 /// The buffer the projection is rendered into.

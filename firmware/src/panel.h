@@ -96,6 +96,13 @@ uint32_t lastDrawUs();
 uint32_t worstDrawUs();
 uint32_t drawCount();
 
+// Switch the backlight on or off.
+//
+// Confirmed working on this board 2026-09-26: driving GPIO 21 low darkens the glass. That was not a
+// given - some ESP32-2432S028R revisions hardwire the backlight on, with the pin present but not
+// gating the transistor - and it gated both CAP-BLANK and CAP-WAKE-RIG until it was observed.
+void backlight(bool on);
+
 // Forget what is on screen, so the next draw is unconditional. Called when leaving a screen, since
 // the change-detection above would otherwise skip redrawing an identical state on return.
 void invalidate();

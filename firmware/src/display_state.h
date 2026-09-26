@@ -176,6 +176,25 @@ float rampPosition(float rpm, float rampStart, float flash);
 constexpr uint32_t kFlashPeriodMs = 333;
 
 
+// Should the backlight be on?
+//
+// Realises CAP-BLANK. Pure, and in the engine rather than the renderer for the same reason the flash
+// cadence is: the rule is worth asserting on the host, and the renderer should be told what to do
+// rather than deciding it.
+//
+// `blankAfterMinutes` of 0 disables blanking entirely, which is the escape hatch the operator asked
+// for. `msSinceDriving` is time since the driving screen was last showing; a live frame resets it,
+// and so does a touch.
+//
+// Two conditions stay lit however long they persist. `versionMismatch` is the one link state whose
+// entire purpose is to tell a person which half to update, and an update in progress must not go
+// dark mid-transfer - a dark panel there reads as a crash and invites pulling the power, which is the
+// one action that can actually brick the device.
+bool backlightShouldBeOn(LinkState link,
+                         bool updateInProgress,
+                         uint32_t msSinceDriving,
+                         uint16_t blankAfterMinutes);
+
 // True while the red half of the flash is showing.
 //
 // Lives in the engine rather than in the renderer for two reasons: it is pure, so the unit tier can

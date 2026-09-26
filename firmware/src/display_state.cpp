@@ -157,6 +157,22 @@ DisplayState derive(const Frame& newest, const LinkInputs& in) {
   return s;
 }
 
+bool backlightShouldBeOn(LinkState link,
+                         bool updateInProgress,
+                         uint32_t msSinceDriving,
+                         uint16_t blankAfterMinutes) {
+  if (blankAfterMinutes == 0) return true;          // disabled outright
+  if (updateInProgress) return true;                // SCREEN-UPDATE is exempt
+  if (link == LinkState::VersionMismatch) return true;
+  if (link == LinkState::Driving) return true;      // a fresh live frame is showing
+
+  // Computed in 64 bits. At the 120-minute maximum the product is 7,200,000 - comfortably inside
+  // 32 bits - but the multiplication is the kind that silently wraps if the bound ever moves, and a
+  // wrapped threshold would blank the panel instantly rather than never.
+  const uint64_t thresholdMs = static_cast<uint64_t>(blankAfterMinutes) * 60000ULL;
+  return static_cast<uint64_t>(msSinceDriving) < thresholdMs;
+}
+
 bool flashOn(uint32_t nowMs) {
   return (nowMs % kFlashPeriodMs) < (kFlashPeriodMs / 2);
 }

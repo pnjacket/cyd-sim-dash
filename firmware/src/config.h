@@ -16,12 +16,20 @@
 
 namespace cyd {
 
-constexpr uint16_t kConfigSchemaVersion = 1;
+// Version 2 from 2026-09-26, adding blankAfterMinutes. The first real exercise of
+// INV-CONFIG-MIGRATION: a version-1 record is migrated in place and gains the field at its default,
+// so a device updating into this firmware keeps its host and credential.
+constexpr uint16_t kConfigSchemaVersion = 2;
+
+// CAP-BLANK. 0 disables blanking; otherwise whole minutes, bounded by INV-BLANK-BOUND.
+constexpr uint16_t kBlankMinutesDefault = 1;
+constexpr uint16_t kBlankMinutesMax     = 120;
 
 struct DeviceConfig {
   uint16_t schemaVersion = kConfigSchemaVersion;
   char     pcHost[64]    = {0};   // IP address or DNS name of the sim PC
   char     credential[64]= {0};   // gates the configuration page and OTA - SEC-CREDENTIAL-POLICY
+  uint16_t blankAfterMinutes = kBlankMinutesDefault;   // 0 disables - CAP-BLANK, INV-BLANK-BOUND
 };
 
 namespace config {

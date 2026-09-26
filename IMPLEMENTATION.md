@@ -50,7 +50,7 @@ Three sittings need the rig, and they are the critical path. Everything else run
 | 20 | Documentation, notice, provenance pass, v1 release | cross-cutting | `G1`, `G3`, `G5`, `G7`, `V5`, `V6` | no | ☐ |
 | 21 | Adopter unaided-setup trial | verification-only | `SUCCESS-SETUP-UNAIDED`, `A10` | no | ☐ |
 | 22 | Drive it and record the criteria | verification-only | every `SUCCESS-*`, `A1` | **yes** | ☐ |
-| 23 | Backlight blanking | full | `CAP-BLANK`, `INV-BLANK-BOUND`, `ENTITY-DEVICECONFIG` schema 2, `UIF-CONFIG`, `API-STATE` | **feasibility test first** | ☐ blocked |
+| 23 | Backlight blanking | full | `CAP-BLANK`, `INV-BLANK-BOUND`, `ENTITY-DEVICECONFIG` schema 2, `UIF-CONFIG`, `API-STATE` | done | ✅ |
 | 24 | Wake the rig from the panel | full | `CAP-WAKE-RIG`, `ENTITY-RIGADDRESS`, `INV-WAKE-NEEDS-LEARNED-MAC`, `EVT-WAKE`, `COMPONENT-TOUCH`, `ADR-TOUCH-SHARED-BUS`, `SEC-WAKE-PHYSICAL-ONLY` | **yes**, and the rig's BIOS | ☐ after 23 |
 | — | **v2 Go/No-Go gate** | decision | reserved to the operator | — | ☐ |
 
@@ -367,7 +367,23 @@ is a manual check, and nothing but a person looking at the panel can execute it.
 argument for the manual gate stated better than the doc set states it: the specification was right,
 the code was wrong, and only the glass could tell the difference.
 
-## Slice 23 is blocked on a five-second test
+## Slice 23: the test came back positive
+
+**GPIO 21 darkens this panel.** Confirmed by observation on 2026-09-26, which unblocked both this
+slice and slice 24. The temporary boot-time test that answered it has been removed; `panel::backlight`
+remains as the primitive it was written to exercise.
+
+Verified on the device: blanked at ~48 s with the period at one minute, woke on telemetry, and the
+schema-1 to schema-2 migration held — host and credential survived and the new field arrived at its
+default. That is the first time `INV-CONFIG-MIGRATION` has had anything to do.
+
+### What the test looked like, in case it is ever needed again
+
+It left text on the glass *during* the dark phase. The LCD holds its image when the backlight is off,
+so a black screen meant the pin works and still-readable text would have meant it does not — an
+outcome the operator could read directly rather than having to trust a timer or a log they cannot see.
+
+## Superseded: slice 23 was blocked on a five-second test
 
 `CAP-BLANK` was authored doc-first on 2026-09-23 and is **not implementable until one thing is
 known**: whether driving GPIO 21 low actually darkens this panel.

@@ -58,6 +58,8 @@ built in a single layer.
 | 21 | Adopter unaided-setup trial | verification-only | ☐ | — | `A10` |
 | 22 | Drive it and record the criteria | verification-only | ☐ | — | `A1` |
 
+| 23 | Backlight blanking | full | ✅ | **on-rig** | `Q12`–`Q15` · GPIO 21 confirmed to darken the glass 2026-09-26; blanked at ~48 s with the period at 1 minute, and woke on telemetry. Schema-2 migration held: host and credential survived, the new field arrived at its default |
+
 ## Gate status
 
 - **Definition-of-Done gate:** not yet evaluated — no slice has completed.

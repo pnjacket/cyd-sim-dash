@@ -133,6 +133,10 @@ void begin() {
   Serial.println(tft.height());
 }
 
+void backlight(bool on) {
+  digitalWrite(TFT_BL, on ? TFT_BACKLIGHT_ON : !TFT_BACKLIGHT_ON);
+}
+
 void drawOrientationTest() {
   const int w = tft.width(), h = tft.height();
   tft.fillScreen(kBlack);
