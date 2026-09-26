@@ -457,10 +457,15 @@ rig has never done this.
 that the wrong way round would have been expensive in the specific way this project keeps finding: not
 a wrong answer, but attention spent on the wrong machine.
 
-What genuinely remains outside this product is narrower than the original four, and was not on the
+What genuinely remained outside this product was narrower than the original four, and was not on the
 list: the panel broadcasts from a **wireless** interface and the rig's adapter is **wired**, so the
 packet has to cross the access point. That is a property of the network, not of either machine, and it
-is the one thing `Q20` can still fail on that no firmware change here would fix.
+was the one thing `Q20` could still fail on that no firmware change here would fix.
+
+**It works on this network, confirmed 2026-09-26** — `Q20` and `SUCCESS-WAKE-FROM-PANEL` both pass
+against the real rig. The residual is now an adopter's problem rather than this build's: an access point
+that does not forward subnet broadcast from wireless to wired would break the feature with nothing
+wrong anywhere in the product, and the checklist says where to look.
 
 ### One observation that made the whole feature possible
 
