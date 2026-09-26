@@ -353,6 +353,69 @@ def test_stale_decay(device: str) -> None:
     check(s.get("wakeArmed") is False, "with nothing armed until somebody touches it")
 
 
+def test_foreign_sender_teaches_nothing(device: str) -> None:
+    """Q23. INV-RIGADDRESS-FROM-CONFIGURED-HOST: only the configured host teaches an address.
+
+    This machine is the foreign sender, which is what makes the check honest: it is exactly the mistake
+    that actually happened. The panel spent a day holding this laptop's hardware address, learned from
+    bench traffic, because the rule was "learn from whoever is sending". A wake would have gone out
+    well-formed, to a machine nobody wanted woken, and the rig ignoring it is indistinguishable from
+    Wake-on-LAN being switched off there.
+
+    The test only means something if this host is NOT the configured one, and if an address is already
+    held for comparison. Both are asserted as preconditions rather than assumed - a version of this
+    check that silently passed because there was nothing to clobber would be worse than no check.
+    """
+    print("a frame from an unconfigured host renders, and teaches nothing")
+
+    before = state(device)
+    configured = before.get("configuredHost")
+    resolved = before.get("resolvedHost")
+    held = before.get("rigMac")
+    foreign_before = before.get("foreignSenderCount")
+
+    # Preconditions. If the panel is configured to point at THIS machine, the frames below are not
+    # foreign and the whole test is vacuous.
+    mine = socket.gethostbyname(socket.gethostname())
+    check(resolved is not None,
+          f"the configured host resolves, so the guard is armed (configuredHost={configured!r})")
+    check(resolved != mine,
+          f"this host {mine} is not the configured host {resolved} - otherwise nothing here is foreign")
+    check(isinstance(held, str) and len(held) == 17,
+          f"an address is already held, so there is something to clobber (rigMac={held!r})")
+    check(isinstance(foreign_before, int), "the foreign-sender counter is reported")
+
+    if resolved == mine or not isinstance(held, str):
+        print("      preconditions not met - skipping the body rather than passing vacuously")
+        return
+
+    # Frames from here, at the normal rate. The rig is offline, so nothing competes.
+    stamp = next_stamp()
+    for i in range(40):
+        send(device, frame(stamp + i * 10))
+        time.sleep(0.02)
+
+    after = wait_for(device, lambda x: x.get("linkState") is None, timeout=6.0)
+
+    # The frames are valid and are rendered. The wire contract does not bind a frame to a source, so
+    # refusing them would be the wrong fix - the panel should still show what it is told.
+    check(after.get("gearGlyph") is not None, "the frames are rendered normally, not refused")
+    check(after.get("linkState") is None, "and the panel reaches the driving screen")
+
+    # But they teach nothing. This is the assertion the whole feature rests on.
+    check(after.get("rigMac") == held,
+          f"the learned address is unchanged: {held} still held, not overwritten with this host's")
+
+    check(after.get("foreignSenderCount") > foreign_before,
+          f"and the foreign sender is counted "
+          f"({foreign_before} -> {after.get('foreignSenderCount')})")
+
+    # The counter is what makes the situation visible at all. Without it, "the panel is being fed by
+    # something unexpected" has no symptom on any surface.
+    print(f"      rigMac held at {held}, "
+          f"foreignSenderCount {foreign_before} -> {after.get('foreignSenderCount')}")
+
+
 def test_unknown_path(device: str) -> None:
     print("an unknown path returns the uniform error, not a framework page")
     try:
@@ -376,6 +439,7 @@ TESTS = {
     "version": test_version_mismatch,
     "stale": test_staleness,
     "staledecay": test_stale_decay,
+    "foreign": test_foreign_sender_teaches_nothing,
     "link": test_unknown_path,
 }
 
