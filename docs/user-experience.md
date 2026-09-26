@@ -181,9 +181,18 @@ one traverses screens that would otherwise never be exercised.
 
 ## Open Questions
 
-- [REVISIT] The nine link-state icons are specified as primitive compositions rather than drawn
-  artwork. They should be judged together on the panel once drawn — nine glyphs that are each
-  sensible alone can still be confusable as a set.
+- ~~The nine link-state icons should be judged together on the panel once drawn.~~ **Closed by
+  operator decision, 2026-09-26, without the comparison being made.** The icons are built and drawn
+  from primitives as specified. The operator saw some of them, judged the set acceptable — "some may
+  not be to my liking but I can live with it" — and declined to work through all nine, on the grounds
+  that reaching the panel costs more than the answer is worth.
+
+  That is a legitimate call and it is recorded as a *decision* rather than as a verification: `U8` and
+  `U13` are **accepted, not verified**, and `BUILD-STATUS.md` says so. The specific risk the question
+  was raised about is therefore still open in fact — the five Wi-Fi variants share a motif on purpose,
+  and whether they are distinguishable *as a set* from the driving position has not been established.
+  If one of them ever proves unreadable in use, this is the decision to revisit, and nothing about the
+  icons needs re-deriving to do it.
 - [REVISIT] **Night brightness.** Two things have narrowed this. The ramp is two 40 px bands rather
   than the full screen, so the lit area is roughly a third of what the concern was written about; and
   `CAP-BLANK` now darkens the panel entirely when it is not driving. What remains is brightness

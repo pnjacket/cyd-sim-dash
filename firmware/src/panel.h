@@ -65,19 +65,22 @@ void drawPortal(const char* apName);
 // A single centred line. Used by OTA progress and anywhere a transient message is owed.
 void drawMessage(const char* text);
 
-// SCREEN-LINK, text only for now: the plain-language line for a condition.
-// [SLICE 14] The nine icons and the interpolating lines land with the link-state slice.
-void drawLink(LinkState state);
+// SCREEN-LINK: one of the nine icons, and the plain-language line beneath it.
+//
+// `text` carries the two values the contract interpolates - the running title, and the version pair.
+// Passing them in rather than reaching for globals is what lets the line be built by the engine, where
+// it is assertable on the host, instead of here.
+void drawLink(LinkState state, const LinkText& text);
+
+// The icon alone. `U13` asks for the nine to be judged together at panel size from the driving
+// position, which cannot be done one screen at a time.
+void drawLinkIcon(LinkState state);
 
 // The wake offer, reached from `unreachable` by a touch. The unreachable line plus an invitation to
 // touch again. Serves CAP-WAKE-RIG; there is no corresponding "waking" screen, because the panel has
 // no way to know whether the rig is coming up and a message it cannot retract would keep asserting
 // something it does not know.
 void drawWakeOffer();
-
-// The plain-language line for a link condition. Exposed so tests and the serial log can use the
-// same strings the panel shows, rather than a second set that can drift.
-const char* linkLine(LinkState state);
 
 // The ramp colour for a position in the window. Four discrete stops, the lowest unlit:
 // 0.00 black - 0.20 green - 0.47 yellow - 0.73 amber. Red belongs to the flash alone.

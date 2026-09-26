@@ -441,16 +441,26 @@ and a different decision.
 
 So 23's GPIO 21 test gates 24 as well. One two-second test settles both.
 
-### What this feature can fail on that is not ours
+### What this feature can fail on that is not ours — much less than first written
 
-`SUCCESS-WAKE-FROM-PANEL` is the only success criterion in this product that can fail for reasons
-entirely outside it. Wake-on-LAN needs, on the rig: a wired Ethernet connection (confirmed
-2026-09-26); the feature enabled in BIOS or UEFI; the adapter permitted to wake the machine, ideally
-restricted to magic packets; and Windows fast startup **off**, because it defeats wake from S5.
+The first version of this section listed four settings on the rig that `SUCCESS-WAKE-FROM-PANEL`
+depends on and cannot control: Wake-on-LAN enabled in BIOS or UEFI, the adapter permitted to wake the
+machine, a wired connection, and Windows fast startup off because it defeats wake from S5. On that
+basis `Q20` said to triage a failure against the rig first.
 
-`Q20` therefore says a failure is triaged against the rig before it is triaged against the firmware.
-Without that instruction the obvious reading of a dead panel touch is "the firmware is broken", and
-four of the five likely causes are settings on another machine.
+**All four are already in place, and proven by use** — the operator has been waking this rig by other
+means for some time (stated 2026-09-26). So the list is not a set of risks to be worked through; it is
+a precondition that is already met, and its main remaining value is as triage for an *adopter* whose
+rig has never done this.
+
+`Q20` is therefore triaged against the firmware first, which is the opposite of what it said. Getting
+that the wrong way round would have been expensive in the specific way this project keeps finding: not
+a wrong answer, but attention spent on the wrong machine.
+
+What genuinely remains outside this product is narrower than the original four, and was not on the
+list: the panel broadcasts from a **wireless** interface and the rig's adapter is **wired**, so the
+packet has to cross the access point. That is a property of the network, not of either machine, and it
+is the one thing `Q20` can still fail on that no firmware change here would fix.
 
 ### One observation that made the whole feature possible
 

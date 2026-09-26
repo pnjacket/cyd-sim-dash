@@ -44,6 +44,12 @@ struct PollResult {
   bool  frameAccepted = false;   // a good frame arrived and was newer than the last
   bool  versionRejected = false; // a frame with a different major arrived
   Frame frame;                   // valid only when frameAccepted
+
+  // The version pair that was refused, valid only when versionRejected. Carried up because
+  // SCREEN-LINK's version-mismatch line names both halves, and this is the only place the other
+  // half's number is ever visible - the datagram is discarded immediately after.
+  uint16_t rejectedMajor = 0;
+  uint16_t rejectedMinor = 0;
 };
 
 /// Bind the socket. Safe to call repeatedly; re-binds only if not already listening.

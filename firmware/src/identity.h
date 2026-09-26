@@ -14,7 +14,7 @@ namespace cyd {
 
 // Carried in every registration so a version mismatch stays diagnosable from the PC side, at the
 // moment the panel itself is least able to help.
-constexpr const char* kFirmwareVersion = "0.10.1";
+constexpr const char* kFirmwareVersion = "0.11.2";
 
 // Writes the 12-character identity plus a terminator. `out` must hold at least 13 bytes.
 // Returns out.

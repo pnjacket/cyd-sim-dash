@@ -6,6 +6,8 @@
 
 #include "panel.h"
 
+#include <math.h>
+
 #include <string.h>
 
 namespace cyd {
@@ -101,22 +103,6 @@ uint16_t rampColour(float position) {
   return kAmber;                          // the last stage before the flash takes over
 }
 
-const char* linkLine(LinkState state) {
-  switch (state) {
-    case LinkState::DrivingPending:   return "Waiting for telemetry";
-    case LinkState::Joining:          return "Joining Wi-Fi";
-    case LinkState::Unresolved:       return "Can't find that PC name";
-    case LinkState::Unreachable:      return "No signal from the PC";
-    case LinkState::Stale:            return "Telemetry stopped";
-    case LinkState::NoSim:            return "No sim running";
-    case LinkState::UnsupportedTitle: return "Title not supported";
-    case LinkState::AdapterFault:     return "Plugin fault - see SimHub log";
-    case LinkState::VersionMismatch:  return "Version mismatch";
-    case LinkState::Driving:          return "";   // the driving screen shows instead
-  }
-  return "";
-}
-
 void begin() {
   pinMode(TFT_BL, OUTPUT);
   digitalWrite(TFT_BL, TFT_BACKLIGHT_ON);
@@ -196,15 +182,214 @@ void drawMessage(const char* text) {
   tft.drawString(text ? text : "", kWidth / 2, kHeight / 2, 4);
 }
 
-void drawLink(LinkState state) {
-  tft.fillScreen(kBlack);
-  tft.setTextDatum(MC_DATUM);
+// ---------------------------------------------------------------------------
+// SCREEN-LINK - the nine icons
+// ---------------------------------------------------------------------------
+//
+// Composed from the drawing primitives TFT_eSPI already provides: arcs, circles, rectangles and
+// lines. No bitmaps, no icon font, nothing to embed or licence. That was a deliberate constraint
+// rather than an economy - an icon set as an asset is an asset to keep in step with the firmware, and
+// nine glyphs at this size do not need one.
+//
+// Geometry is absolute, like the rest of this file. The panel is fixed and there is no responsive
+// layout.
+//
+// The grouping is the substance and is worth stating where the code is: the first five share a Wi-Fi
+// motif because they are all *link* problems differing only in how far along the chain the failure is,
+// and the last four have deliberately distinct silhouettes because the link is fine and something
+// beyond it is wrong. A glance should say which of those two worlds you are in before it says which
+// condition.
 
-  // [SLICE 14] An icon belongs left of this line, one per condition, composed from primitives.
-  // Until then the line carries the whole message, which is why every line reads as a complete
-  // sentence rather than a label.
+namespace {
+
+// Icon geometry. The fan's origin sits low so the whole glyph reads as radiating upward from a point,
+// which is what makes it a Wi-Fi symbol rather than three stacked curves.
+constexpr int kIconCx    = kWidth / 2;
+constexpr int kIconOy    = 118;       // the fan's origin, and the dot's centre
+constexpr int kLineY     = 178;       // the plain-language line, below every icon
+
+// TFT_eSPI's arc angles: 0 is at six o'clock and they run clockwise, so twelve o'clock is 180. An
+// upward-opening fan is therefore centred on 180.
+constexpr int kFanFrom = 133;
+constexpr int kFanTo   = 227;
+
+// Radial position at an arc angle, in that same convention.
+void radial(int cx, int cy, int r, int degrees, int& x, int& y) {
+  const float a = static_cast<float>(degrees) * 3.14159265f / 180.0f;
+  x = cx - static_cast<int>(static_cast<float>(r) * sinf(a));
+  y = cy + static_cast<int>(static_cast<float>(r) * cosf(a));
+}
+
+// A solid band of arc.
+void arcFilled(int cx, int cy, int rOuter, int rInner, uint16_t colour) {
+  tft.drawArc(cx, cy, rOuter, rInner, kFanFrom, kFanTo, colour, kBlack, true);
+}
+
+// The same band as an outline: its two boundaries, closed at each end. This is what "hollow" means in
+// the contract - not a thinner arc, which would read as a weaker signal rather than an absent one.
+void arcHollow(int cx, int cy, int rOuter, int rInner, uint16_t colour) {
+  tft.drawArc(cx, cy, rOuter, rOuter - 1, kFanFrom, kFanTo, colour, kBlack, true);
+  tft.drawArc(cx, cy, rInner + 1, rInner, kFanFrom, kFanTo, colour, kBlack, true);
+
+  int xo, yo, xi, yi;
+  radial(cx, cy, rOuter, kFanFrom, xo, yo);
+  radial(cx, cy, rInner, kFanFrom, xi, yi);
+  tft.drawLine(xo, yo, xi, yi, colour);
+  radial(cx, cy, rOuter, kFanTo, xo, yo);
+  radial(cx, cy, rInner, kFanTo, xi, yi);
+  tft.drawLine(xo, yo, xi, yi, colour);
+}
+
+// The shared Wi-Fi motif: three arcs and a dot. `hollowBand` names the one band drawn as an outline,
+// counting 1 as the innermost, or 0 for none. `filledDot` distinguishes the two conditions that are
+// otherwise identical.
+void wifiFan(int hollowBand, bool filledDot) {
+  const int radii[3][2] = {{24, 18}, {38, 32}, {52, 46}};
+  for (int band = 0; band < 3; ++band) {
+    if (band + 1 == hollowBand) {
+      arcHollow(kIconCx, kIconOy, radii[band][0], radii[band][1], kWhite);
+    } else {
+      arcFilled(kIconCx, kIconOy, radii[band][0], radii[band][1], kWhite);
+    }
+  }
+  if (filledDot) {
+    tft.fillCircle(kIconCx, kIconOy, 7, kWhite);
+  } else {
+    tft.drawCircle(kIconCx, kIconOy, 7, kWhite);
+    tft.drawCircle(kIconCx, kIconOy, 6, kWhite);
+  }
+}
+
+// A screen outline, for the three conditions about what is running rather than about the link.
+void screenRect(bool slashed) {
+  const int w = 96, h = 68;
+  const int x = kIconCx - w / 2, y = kIconOy - 58;
+  tft.drawRoundRect(x, y, w, h, 8, kWhite);
+  tft.drawRoundRect(x + 1, y + 1, w - 2, h - 2, 7, kWhite);
+  if (slashed) {
+    // Corner to corner, thick enough to read at a glance from the driving position.
+    for (int d = -1; d <= 1; ++d) {
+      tft.drawLine(x + 8 + d, y + h - 8, x + w - 8 + d, y + 8, kWhite);
+    }
+  }
+}
+
+}  // namespace
+
+// One icon, centred horizontally, above the line.
+void drawLinkIcon(LinkState state) {
+  switch (state) {
+    // --- the five link conditions, sharing the Wi-Fi motif --------------------
+    case LinkState::DrivingPending:
+      // Everything is connected and the telemetry has not started: full signal, hollow dot. The dot
+      // is the payload, so an outline there says the link is made and nothing is coming through it.
+      wifiFan(/*hollowBand=*/0, /*filledDot=*/false);
+      break;
+
+    case LinkState::Joining:
+      // Still associating: the outermost band is hollow, the conventional reading of a signal that is
+      // not established yet.
+      wifiFan(/*hollowBand=*/3, /*filledDot=*/true);
+      break;
+
+    case LinkState::Unresolved: {
+      // Full signal with a question mark over it: the network is fine and the *name* is the problem.
+      wifiFan(/*hollowBand=*/0, /*filledDot=*/true);
+      tft.setTextDatum(MC_DATUM);
+      tft.setTextColor(kWhite, kBlack);
+      tft.drawString("?", kIconCx, kIconOy - 34, 6);
+      break;
+    }
+
+    case LinkState::Unreachable: {
+      // Full signal with the path crossed out. The arrow is the thing struck through rather than the
+      // signal, because the signal is genuinely fine - nothing is coming back.
+      wifiFan(/*hollowBand=*/0, /*filledDot=*/true);
+      const int y = kIconOy - 30;
+      tft.fillRect(kIconCx - 26, y - 2, 52, 5, kBlack);      // clear a channel for the arrow
+      tft.drawLine(kIconCx - 24, y, kIconCx + 22, y, kWhite);
+      tft.drawLine(kIconCx + 22, y, kIconCx + 14, y - 7, kWhite);
+      tft.drawLine(kIconCx + 22, y, kIconCx + 14, y + 7, kWhite);
+      for (int d = -1; d <= 1; ++d) {                         // struck through, thickly
+        tft.drawLine(kIconCx - 14 + d, y + 16, kIconCx + 14 + d, y - 16, kWhite);
+      }
+      break;
+    }
+
+    case LinkState::Stale:
+      // Full signal, paused. Frames were arriving and stopped, which is exactly what a pause means and
+      // is not the same fact as no signal at all.
+      wifiFan(/*hollowBand=*/0, /*filledDot=*/true);
+      tft.fillRect(kIconCx - 14, kIconOy - 42, 9, 26, kBlack);
+      tft.fillRect(kIconCx + 5, kIconOy - 42, 9, 26, kBlack);
+      tft.fillRect(kIconCx - 13, kIconOy - 41, 7, 24, kWhite);
+      tft.fillRect(kIconCx + 6, kIconOy - 41, 7, 24, kWhite);
+      break;
+
+    // --- the four that are not link problems ---------------------------------
+    case LinkState::NoSim:
+      // A blank screen: the plugin is talking to us and there is nothing running behind it.
+      screenRect(/*slashed=*/false);
+      break;
+
+    case LinkState::UnsupportedTitle:
+      // A screen with something on it that we cannot use.
+      screenRect(/*slashed=*/true);
+      break;
+
+    case LinkState::AdapterFault: {
+      // The only warning triangle in the set, and the only icon that means "something broke" rather
+      // than "something is absent". Kept white rather than amber: amber and red belong to the shift
+      // cue, and a second meaning for them on another screen is how a colour stops being a signal.
+      const int cy = kIconOy - 24, half = 52, h = 64;
+      for (int d = 0; d < 2; ++d) {
+        tft.drawLine(kIconCx, cy - h / 2 - d, kIconCx - half, cy + h / 2 - d, kWhite);
+        tft.drawLine(kIconCx, cy - h / 2 - d, kIconCx + half, cy + h / 2 - d, kWhite);
+        tft.drawLine(kIconCx - half, cy + h / 2 - d, kIconCx + half, cy + h / 2 - d, kWhite);
+      }
+      tft.fillRect(kIconCx - 2, cy - 14, 5, 24, kWhite);
+      tft.fillRect(kIconCx - 2, cy + 16, 5, 5, kWhite);
+      break;
+    }
+
+    case LinkState::VersionMismatch: {
+      // Two offset blocks with a gap: two halves that no longer meet. The gap is the message, so it is
+      // wide enough to survive being looked at quickly.
+      const int w = 54, h = 44, gap = 16;
+      const int cy = kIconOy - 26;
+      tft.drawRect(kIconCx - gap / 2 - w, cy - h / 2 - 10, w, h, kWhite);
+      tft.drawRect(kIconCx - gap / 2 - w + 1, cy - h / 2 - 9, w - 2, h - 2, kWhite);
+      tft.drawRect(kIconCx + gap / 2, cy - h / 2 + 10, w, h, kWhite);
+      tft.drawRect(kIconCx + gap / 2 + 1, cy - h / 2 + 11, w - 2, h - 2, kWhite);
+      break;
+    }
+
+    case LinkState::Driving:
+      break;   // no icon: the driving screen shows instead
+  }
+}
+
+void drawLink(LinkState state, const LinkText& text) {
+  tft.fillScreen(kBlack);
+
+  drawLinkIcon(state);
+
+  char line[64];
+  linkLineInto(line, sizeof(line), state, text);
+
+  // Font 2 for the line rather than 4. The interpolating lines are the longest in the set - a title
+  // name or two version pairs - and a face that fits "Version mismatch" and clips the version numbers
+  // would hide exactly the part that makes the line worth reading.
+  tft.setTextDatum(MC_DATUM);
   tft.setTextColor(kWhite, kBlack);
-  tft.drawString(linkLine(state), kWidth / 2, kHeight / 2, 4);
+  tft.drawString(line, kWidth / 2, kLineY, 4);
+
+  // If the chosen face overruns the panel, drop to the smaller one rather than clipping. Checked
+  // rather than assumed because the title comes off the wire and its length is not ours to choose.
+  if (tft.textWidth(line, 4) > kWidth - 8) {
+    tft.fillRect(0, kLineY - 16, kWidth, 32, kBlack);
+    tft.drawString(line, kWidth / 2, kLineY, 2);
+  }
 }
 
 // Offering a wake. The unreachable line stays exactly where it was, and a second line appears below

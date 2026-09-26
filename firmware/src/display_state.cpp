@@ -1,5 +1,6 @@
 #include "display_state.h"
 
+#include <stdio.h>
 #include <string.h>
 
 namespace cyd {
@@ -175,6 +176,64 @@ bool backlightShouldBeOn(LinkState link,
 
 bool flashOn(uint32_t nowMs) {
   return (nowMs % kFlashPeriodMs) < (kFlashPeriodMs / 2);
+}
+
+// ---------------------------------------------------------------------------
+// The link-condition lines
+// ---------------------------------------------------------------------------
+
+const char* linkLine(LinkState state) {
+  switch (state) {
+    case LinkState::DrivingPending:   return "Waiting for telemetry";
+    case LinkState::Joining:          return "Joining Wi-Fi";
+    case LinkState::Unresolved:       return "Can't find that PC name";
+    case LinkState::Unreachable:      return "No signal from the PC";
+    case LinkState::Stale:            return "Telemetry stopped";
+    case LinkState::NoSim:            return "No sim running";
+    case LinkState::UnsupportedTitle: return "Title not supported";
+    case LinkState::AdapterFault:     return "Plugin fault - see SimHub log";
+    case LinkState::VersionMismatch:  return "Version mismatch";
+    case LinkState::Driving:          return "";   // the driving screen shows instead
+  }
+  return "";
+}
+
+size_t linkLineInto(char* out, size_t cap, LinkState state, const LinkText& text) {
+  if (out == nullptr || cap == 0) return 0;
+  out[0] = '\0';
+
+  int n = 0;
+  switch (state) {
+    case LinkState::UnsupportedTitle:
+      // The title is reported by the plugin and crosses the wire, so it is not trusted for length.
+      // %.20s bounds it; the frame's own field already bounds it to 31, but the bound that matters
+      // here is what fits on the glass.
+      if (text.titleId != nullptr && text.titleId[0] != '\0') {
+        n = snprintf(out, cap, "%.20s not supported", text.titleId);
+        break;
+      }
+      n = snprintf(out, cap, "%s", linkLine(state));
+      break;
+
+    case LinkState::VersionMismatch:
+      if (text.peerVersionKnown) {
+        n = snprintf(out, cap, "Version mismatch - %u.%u vs %u.%u",
+                     static_cast<unsigned>(text.deviceMajor), static_cast<unsigned>(text.deviceMinor),
+                     static_cast<unsigned>(text.peerMajor), static_cast<unsigned>(text.peerMinor));
+        break;
+      }
+      n = snprintf(out, cap, "%s", linkLine(state));
+      break;
+
+    default:
+      n = snprintf(out, cap, "%s", linkLine(state));
+      break;
+  }
+
+  if (n < 0) { out[0] = '\0'; return 0; }
+  const size_t written = (static_cast<size_t>(n) >= cap) ? cap - 1 : static_cast<size_t>(n);
+  out[written] = '\0';
+  return written;
 }
 
 }  // namespace cyd

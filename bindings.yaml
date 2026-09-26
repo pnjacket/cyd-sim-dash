@@ -202,7 +202,11 @@ bindings:
       symbol: cyd::panel::drawDriving
   SCREEN-LINK:
     - path: firmware/src/panel.cpp
-      symbol: cyd::panel::drawLink      # text lines; the nine composed icons are still owed
+      symbol: cyd::panel::drawLink      # icon plus line
+    - path: firmware/src/panel.cpp
+      symbol: cyd::panel::drawLinkIcon  # the nine, composed from primitives
+    - path: firmware/src/display_state.cpp
+      symbol: cyd::linkLineInto         # the nine lines and the two interpolations, host-tested
 
   # --- slice 15: configuration page ---------------------------------------------
   COMPONENT-WEB:

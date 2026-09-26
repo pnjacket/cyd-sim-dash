@@ -67,6 +67,11 @@ static net::Counters g_counters;
 static Frame         g_lastFrame;
 static bool          g_haveFrame = false;
 static bool          g_versionRejected = false;
+// The version pair that was refused, for SCREEN-LINK's mismatch line. Held here because the datagram
+// carrying it is discarded immediately, and the line names both halves or it is not worth reading.
+static uint16_t      g_rejectedMajor = 0;
+static uint16_t      g_rejectedMinor = 0;
+static bool          g_rejectedKnown = false;
 static uint32_t      g_lastAcceptedMs = 0;
 
 // CAP-BLANK. When the driving screen was last showing, and whether the glass is currently lit.
@@ -268,7 +273,12 @@ void loop() {
     IPAddress sender;
     if (net::lastSender(sender)) rigaddr::observe(sender);
   }
-  if (got.versionRejected) g_versionRejected = true;
+  if (got.versionRejected) {
+    g_versionRejected = true;
+    g_rejectedMajor = got.rejectedMajor;
+    g_rejectedMinor = got.rejectedMinor;
+    g_rejectedKnown = true;
+  }
 
   // The real ladder on real inputs. Link-layer facts outrank frame contents, and freshness
   // outranks a stale frame's status - both are the ladder's business, not this loop's.
@@ -399,10 +409,16 @@ void loop() {
     // The offer owns the glass while it stands. Nothing to redraw - it is static - and redrawing the
     // link screen underneath it is exactly the bug this branch exists to prevent.
   } else if (state != g_shown) {
+    LinkText text;
+    text.titleId = g_haveFrame ? g_lastFrame.titleId : nullptr;
+    text.peerVersionKnown = g_rejectedKnown;
+    text.peerMajor = g_rejectedMajor;
+    text.peerMinor = g_rejectedMinor;
+
     panel::invalidate();
-    panel::drawLink(state);
+    panel::drawLink(state, text);
     Serial.print("[link] ");
-    Serial.println(panel::linkLine(state));
+    Serial.println(linkLine(state));
   }
   g_shown = state;
 

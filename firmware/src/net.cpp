@@ -192,6 +192,8 @@ PollResult poll(StampTracker& stamps, Counters& counters, uint32_t nowMs, int ma
         counters.versionRejected++;
         g_counters.versionRejected++;
         result.versionRejected = true;
+        result.rejectedMajor = f.protocolMajor;
+        result.rejectedMinor = f.protocolMinor;
         break;
 
       case Reject::FieldRange:

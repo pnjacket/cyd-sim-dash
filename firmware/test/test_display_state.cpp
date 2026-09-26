@@ -332,6 +332,137 @@ static void test_backlight_rule() {
   CHECK(!backlightShouldBeOn(LinkState::Unreachable, false, 120 * min, 120), "dark at 120 minutes");
 }
 
+static void test_link_lines_cover_every_condition() {
+  section("SCREEN-LINK: every condition has a line, and it reads as a sentence");
+
+  const LinkState all[] = {
+    LinkState::DrivingPending, LinkState::Joining, LinkState::Unresolved, LinkState::Unreachable,
+    LinkState::Stale, LinkState::NoSim, LinkState::UnsupportedTitle, LinkState::AdapterFault,
+    LinkState::VersionMismatch,
+  };
+
+  LinkText text;
+  for (size_t i = 0; i < sizeof(all) / sizeof(all[0]); ++i) {
+    char line[64];
+    const size_t n = linkLineInto(line, sizeof(line), all[i], text);
+    CHECK(n > 0, "the condition has a line");
+    CHECK(line[n] == '\0', "and it is terminated");
+
+    // Every line is a complete sentence rather than a label, because an adopter arrives knowing none
+    // of these glyphs and the icon alone teaches them nothing. A bare word would be a label.
+    CHECK(n >= 9, "the line says something, rather than labelling the state");
+  }
+
+  // Driving is the one state with no line: the driving screen shows instead. An empty string here is
+  // correct and a placeholder would be worse - it would put text on a screen that has none.
+  char driving[64];
+  CHECK(linkLineInto(driving, sizeof(driving), LinkState::Driving, text) == 0,
+        "driving has no line, because it has no link screen");
+}
+
+static void test_the_two_interpolating_lines() {
+  section("the two lines that carry a value carry it");
+
+  char line[64];
+
+  // Naming the title is the entire point of the unsupported-title condition. Without it the line says
+  // a title is unsupported and leaves you to guess which one the plugin thinks is running - and the
+  // most likely reason for seeing this screen at all is that it has the wrong one.
+  LinkText title;
+  title.titleId = "assettocorsa";
+  linkLineInto(line, sizeof(line), LinkState::UnsupportedTitle, title);
+  CHECK(strstr(line, "assettocorsa") != nullptr, "the unsupported title is named");
+  CHECK(strstr(line, "not supported") != nullptr, "and the line still says what is wrong");
+
+  // Both versions, because the condition does not say which half to update and that is the only
+  // action available. One number would be worse than none: it reads as the wrong half as often as the
+  // right one.
+  LinkText version;
+  version.deviceMajor = 1;
+  version.deviceMinor = 0;
+  version.peerVersionKnown = true;
+  version.peerMajor = 2;
+  version.peerMinor = 1;
+  linkLineInto(line, sizeof(line), LinkState::VersionMismatch, version);
+  CHECK(strstr(line, "1.0") != nullptr, "the device's version appears");
+  CHECK(strstr(line, "2.1") != nullptr, "and the plugin's");
+
+  // The order matters, and is not arbitrary: the contract says device then plugin. Reversed, the line
+  // would be read confidently and wrongly, and the operator would update the half that was already
+  // current.
+  const char* device = strstr(line, "1.0");
+  const char* peer = strstr(line, "2.1");
+  CHECK(device != nullptr && peer != nullptr && device < peer,
+        "the device's version comes first, as the contract specifies");
+}
+
+static void test_missing_values_fall_back_rather_than_print_a_hole() {
+  section("a missing value falls back to the generic wording");
+
+  char line[64];
+
+  // A line reading "not supported" with nothing in front of it, or "mismatch - 1.0 vs 0.0", is worse
+  // than the generic wording: the first looks broken and the second is a specific claim that happens
+  // to be false. 0.0 is not a version anything ever reported.
+  LinkText none;
+  linkLineInto(line, sizeof(line), LinkState::UnsupportedTitle, none);
+  CHECK(strcmp(line, "Title not supported") == 0, "no title falls back to the generic line");
+
+  LinkText empty;
+  empty.titleId = "";
+  linkLineInto(line, sizeof(line), LinkState::UnsupportedTitle, empty);
+  CHECK(strcmp(line, "Title not supported") == 0, "an empty title does too, not a leading space");
+
+  linkLineInto(line, sizeof(line), LinkState::VersionMismatch, none);
+  CHECK(strcmp(line, "Version mismatch") == 0, "an unknown peer version falls back");
+  CHECK(strstr(line, "0.0") == nullptr, "and never prints a version nothing reported");
+}
+
+static void test_the_line_cannot_overrun_or_be_broken_by_the_wire() {
+  section("the title comes off the wire, so it is not trusted for length");
+
+  char line[64];
+
+  char huge[64];
+  memset(huge, 'z', sizeof(huge) - 1);
+  huge[sizeof(huge) - 1] = '\0';
+
+  LinkText text;
+  text.titleId = huge;
+  const size_t n = linkLineInto(line, sizeof(line), LinkState::UnsupportedTitle, text);
+  CHECK(n < sizeof(line), "an over-long title does not overrun the buffer");
+  CHECK(line[n] == '\0', "the result is terminated");
+
+  // Bounded well inside the buffer rather than merely not overrunning it, so the words after the
+  // title survive. A line truncated to nothing but a title name says less than the generic wording.
+  CHECK(strstr(line, "not supported") != nullptr, "and the words after it survive");
+
+  // A buffer too small to hold anything must still leave a valid empty string rather than whatever
+  // was on the stack.
+  char tiny[1];
+  CHECK(linkLineInto(tiny, sizeof(tiny), LinkState::NoSim, text) == 0, "a one-byte buffer writes nothing");
+  CHECK(tiny[0] == '\0', "and is still a valid string");
+  CHECK(linkLineInto(nullptr, 64, LinkState::NoSim, text) == 0, "a null buffer is refused");
+}
+
+static void test_the_uninterpolated_line_matches_the_interpolated_one() {
+  section("the serial log and the glass cannot show different wording");
+
+  // linkLine() is what the serial log prints and linkLineInto() is what the panel draws. Two copies
+  // of nine strings is two copies that can drift, and the one on the glass is the one nobody diffs.
+  // So for every condition that interpolates nothing, they must be the same text.
+  const LinkState plain[] = {
+    LinkState::DrivingPending, LinkState::Joining, LinkState::Unresolved, LinkState::Unreachable,
+    LinkState::Stale, LinkState::NoSim, LinkState::AdapterFault,
+  };
+  LinkText text;
+  for (size_t i = 0; i < sizeof(plain) / sizeof(plain[0]); ++i) {
+    char line[64];
+    linkLineInto(line, sizeof(line), plain[i], text);
+    CHECK(strcmp(line, linkLine(plain[i])) == 0, "the two renderings agree");
+  }
+}
+
 int main() {
   printf("display-state engine — unit tier\n");
   test_gear_domain();
@@ -346,6 +477,12 @@ int main() {
   test_no_per_title_branch();
   test_flash_cadence();
   test_backlight_rule();
+
+  test_link_lines_cover_every_condition();
+  test_the_two_interpolating_lines();
+  test_missing_values_fall_back_rather_than_print_a_hole();
+  test_the_line_cannot_overrun_or_be_broken_by_the_wire();
+  test_the_uninterpolated_line_matches_the_interpolated_one();
 
   printf("\n%d checks, %d failures\n", g_checks, g_failures);
   return g_failures == 0 ? 0 : 1;

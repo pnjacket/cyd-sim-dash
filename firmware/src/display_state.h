@@ -164,6 +164,40 @@ LinkState deriveLink(const LinkInputs& in, Status newestStatus);
 // Derives the full display state. `newest` is only read when the ladder yields Driving.
 DisplayState derive(const Frame& newest, const LinkInputs& in);
 
+// ---------------------------------------------------------------------------
+// The link-condition lines
+// ---------------------------------------------------------------------------
+
+// The values two of the nine lines interpolate.
+//
+// Both exist because the condition alone does not tell you what to do: knowing a title is unsupported
+// is useless without knowing which title the plugin thinks is running, and a version mismatch without
+// both numbers does not say which half to update.
+struct LinkText {
+  const char* titleId = nullptr;                 // unsupportedTitle: the title the plugin reported
+
+  uint16_t deviceMajor = kProtocolMajor;         // versionMismatch: this device's pair
+  uint16_t deviceMinor = kProtocolMinor;
+
+  bool     peerVersionKnown = false;             // and the pair that was refused, if one was seen
+  uint16_t peerMajor = 0;
+  uint16_t peerMinor = 0;
+};
+
+// The line for a condition, with values interpolated where the contract calls for them. Returns the
+// length written. Falls back to the uninterpolated wording when a value is missing rather than
+// printing an empty slot - a line reading "not supported" with nothing before it is worse than a
+// generic one.
+//
+// Lives here rather than in the renderer so the nine lines, and especially the two interpolations,
+// are assertable on the host. They were previously in panel.cpp with a comment claiming tests could
+// use them; no host test can include that file, so the claim was not true.
+size_t linkLineInto(char* out, size_t cap, LinkState state, const LinkText& text);
+
+// The uninterpolated line. Still used for the serial log, where a second copy of the wording would be
+// free to drift from the one on the glass.
+const char* linkLine(LinkState state);
+
 // Ramp position for an rpm within [rampStart, flash]. Clamped to 0..1.
 float rampPosition(float rpm, float rampStart, float flash);
 
