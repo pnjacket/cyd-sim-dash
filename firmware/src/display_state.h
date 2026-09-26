@@ -33,6 +33,23 @@ constexpr uint16_t kProtocolMinor = 0;  // differing minor tolerated, unknown fi
 
 constexpr uint32_t kStalenessMs      = 2000;  // Domain & Data: INV-FRESH-RENDER
 constexpr uint32_t kFirstFrameGraceMs = 5000; // drivingPending -> unreachable boundary
+
+// stale -> unreachable. Ladder row 6b, added 2026-09-26.
+//
+// `stale` is a transient, not a resting place. It says "telemetry was arriving and stopped", which is
+// worth saying for a minute and says nothing after twenty - and before this the condition persisted
+// for the whole power session, so what the panel showed depended on whether it happened to be powered
+// up before the PC went down rather than on anything true now.
+//
+// A minute, because it must exceed every ordinary interruption that leaves the link intact. The
+// longest of those is a SimHub restart. It need not cover a WiFi drop or a sim change: a dropped
+// association is `joining` by row 1, and closing the sim leaves SimHub publishing status frames, which
+// is `noSim` by row 7. A full minute with the link up and no datagrams at all means the producer is
+// gone.
+//
+// Deliberately NOT tied to blankAfterMinutes, although the default makes them coincide. Tying them
+// would mean lengthening the blanking period also delayed the wake becoming available.
+constexpr uint32_t kStaleDecayMs = 60000;
 constexpr uint32_t kRegisterIntervalMs = 2000;
 constexpr uint32_t kDeviceForgottenMs  = 6000;
 

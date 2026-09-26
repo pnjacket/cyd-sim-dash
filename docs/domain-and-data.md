@@ -121,7 +121,8 @@ a stale frame happened to say.
 | 3 | The most recent datagram was rejected for an unaccepted protocol major, and nothing has been accepted since | `versionMismatch` |
 | 4 | No frame has **ever** been accepted this session, and less than the first-frame grace period has passed since registering | `drivingPending` |
 | 5 | No frame has ever been accepted this session, and the grace period has passed | `unreachable` |
-| 6 | A frame was accepted earlier, but none within the staleness threshold | `stale` |
+| 6 | A frame was accepted earlier, none within the staleness threshold, and **less than the stale-decay period** has passed since the last one | `stale` |
+| 6b | A frame was accepted earlier and **the stale-decay period has passed** with nothing arriving | `unreachable` |
 | 7 | The newest accepted frame is fresh, status `noSim` | `noSim` |
 | 8 | The newest accepted frame is fresh, status `unsupportedTitle` | `unsupportedTitle` |
 | 9 | The newest accepted frame is fresh, status `adapterFault` | `adapterFault` |
@@ -134,6 +135,29 @@ guess at:
   yields `stale`, because row 6 precedes row 9. An old fault says nothing about now.
 - **`drivingPending` and `unreachable` differ only by elapsed time.** Both mean no frame has ever
   arrived; the grace period is what separates "starting up" from "the PC side is not there".
+- **`stale` is a transient, not a resting place.** Row 6b was added 2026-09-26 after the operator
+  observed `stale` persisting indefinitely once the sim PC was switched off. It was correct and it
+  was useless: "telemetry was arriving and stopped" is worth saying for a minute and says nothing
+  after twenty. Row 6b lets the condition settle into the same answer a panel that had just booted
+  would give — `unreachable` — so the screen no longer depends on whether the panel happened to be
+  powered up before the PC went down.
+
+  It also fixed `CAP-WAKE-RIG`, which is how the defect was found. **The wake arms only in
+  `unreachable`**, so before row 6b a panel that had been driving and then lost its PC sat in `stale`
+  forever and a touch offered nothing — precisely the case the feature exists for. The earlier
+  decision to arm on `unreachable` alone stands; what was wrong was that `unreachable` was
+  unreachable.
+
+The **stale-decay period is 60 seconds**, and the value is reasoned rather than measured. It has to
+exceed every ordinary interruption that leaves the link intact, and the longest of those is a SimHub
+restart, which is tens of seconds. It does not have to cover a WiFi drop or a sim change, because
+neither produces `stale`: a dropped association is `joining` by row 1, and closing the sim leaves
+SimHub publishing status frames, which is `noSim` by row 7. A full minute with the link up and *no
+datagrams at all* means the producer is gone.
+
+It deliberately does **not** track `blankAfterMinutes`, although the default of one minute makes them
+coincide. They answer different questions, and tying them would mean an operator who lengthened the
+blanking period also delayed the wake becoming available, for no reason they could have predicted.
 
 The first-frame grace period is **5 seconds**. It must comfortably exceed the idle publish interval,
 because a device that registers while the PC sits in a menu waits a full idle period (~1 s) for its

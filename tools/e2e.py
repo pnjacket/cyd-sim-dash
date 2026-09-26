@@ -316,6 +316,43 @@ def test_staleness(device: str) -> None:
           "the reported frame age reflects the silence")
 
 
+def test_stale_decay(device: str) -> None:
+    """Q22. Ladder row 6b: stale is a transient, and the wake becomes available when it lapses.
+
+    Slow by nature - the decay period is a minute and there is no way to shorten it from outside. It
+    earns the wall-clock because the defect it guards was invisible everywhere else: every rung of the
+    ladder was individually correct, and the consequence landed two contracts away, on a wake that
+    could never be offered in the one situation the feature exists for.
+    """
+    print("stale decays to unreachable, which is what makes the wake reachable")
+
+    stamp = next_stamp()
+    send(device, frame(stamp), count=5)
+    wait_for(device, lambda x: x.get("linkState") is None)
+
+    time.sleep(3.0)
+    s = state(device)
+    check(s.get("linkState") == "stale", f"first it is stale (got {s.get('linkState')})")
+
+    # Nothing is sent for the rest of the period, on purpose. Polling /state does not feed the panel:
+    # the HTTP surface is read-only and shares no path with the receive side.
+    print("      waiting out the 60 s decay period...")
+    deadline = time.time() + 75.0
+    seen = None
+    while time.time() < deadline:
+        seen = state(device).get("linkState")
+        if seen == "unreachable":
+            break
+        time.sleep(2.0)
+
+    check(seen == "unreachable", f"then it decays to unreachable (got {seen})")
+
+    s = state(device)
+    check(s.get("rigMacKnown") is True,
+          "and the address learned from those frames is still held, so a touch would offer the wake")
+    check(s.get("wakeArmed") is False, "with nothing armed until somebody touches it")
+
+
 def test_unknown_path(device: str) -> None:
     print("an unknown path returns the uniform error, not a framework page")
     try:
@@ -338,6 +375,7 @@ TESTS = {
     "faults": test_soft_faults_are_counted,
     "version": test_version_mismatch,
     "stale": test_staleness,
+    "staledecay": test_stale_decay,
     "link": test_unknown_path,
 }
 

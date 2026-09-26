@@ -113,7 +113,14 @@ LinkState deriveLink(const LinkInputs& in, Status newestStatus) {
 
   // 6 — freshness outranks what a stale frame happened to say. A four-second-old adapterFault
   // reads as Stale, because an old fault tells you nothing about now.
-  if (in.msSinceAccepted > kStalenessMs)        return LinkState::Stale;
+  //
+  // 6b - and Stale itself decays. Past the decay period the panel says what a panel that had just
+  // booted would say, so the screen stops depending on whether this one happened to be powered up
+  // before the PC went down. That also restores CAP-WAKE-RIG, which arms only in Unreachable and
+  // was therefore unavailable in exactly the case the feature exists for.
+  if (in.msSinceAccepted > kStalenessMs) {
+    return (in.msSinceAccepted < kStaleDecayMs) ? LinkState::Stale : LinkState::Unreachable;
+  }
 
   switch (newestStatus) {                                                           // 7, 8, 9
     case Status::NoSim:            return LinkState::NoSim;

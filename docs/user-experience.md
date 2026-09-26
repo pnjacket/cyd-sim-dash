@@ -142,6 +142,11 @@ an arriving frame rather than by a user action:
   would keep asserting something it does not know. If the wake worked, the driving screen arrives on
   its own; if it did not, the operator is looking at `unreachable` again, which is the truth.
 
+- **Telemetry stopped** — shown for the first minute after frames stop arriving with the link still
+  up. After that the panel says *No signal from the PC* instead, which is the same thing a panel that
+  had just been switched on would say. The distinction is worth drawing while it is fresh and worth
+  dropping once it is not.
+
 - **Blanked** — the backlight is off. Entered when the driving screen has not been showing for
   `blankAfterMinutes`, which covers every non-driving condition: `unreachable`, `noSim`, `stale`,
   `adapterFault`, `unresolved`, `joining` and `drivingPending`. Left the instant a live frame is

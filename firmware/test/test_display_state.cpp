@@ -228,6 +228,43 @@ static void test_link_ladder() {
   CHECK(deriveLink(in, Status::AdapterFault) == LinkState::AdapterFault, "9. a fresh adapterFault frame");
   CHECK(deriveLink(in, Status::Live) == LinkState::Driving, "a fresh live frame yields no link state at all");
 
+  // 6b. Stale decays, and the boundary is asserted from both sides.
+  //
+  // This is the rung that was missing, and the defect it caused is worth keeping in view: every other
+  // rung was individually correct, so nothing at the unit tier was wrong. What was wrong was that one
+  // condition had no exit, and the consequence landed two contracts away - CAP-WAKE-RIG arms only in
+  // Unreachable, so a panel that had been driving and then lost its PC could never offer a wake.
+  in = liveInputs(); in.msSinceAccepted = kStaleDecayMs - 1;
+  CHECK(deriveLink(in, Status::Live) == LinkState::Stale, "6. one millisecond inside the decay period");
+
+  in = liveInputs(); in.msSinceAccepted = kStaleDecayMs;
+  CHECK(deriveLink(in, Status::Live) == LinkState::Unreachable, "6b. exactly at the decay period");
+
+  in = liveInputs(); in.msSinceAccepted = 4294967295u;
+  CHECK(deriveLink(in, Status::Live) == LinkState::Unreachable,
+        "6b. and it stays there - stale is a transient, never a resting place");
+
+  // The decayed answer must match what a panel that had never accepted a frame would say, because that
+  // is the whole point: the screen should not depend on whether this panel happened to be powered up
+  // before the PC went down.
+  LinkInputs never = liveInputs();
+  never.everAccepted = false;
+  never.msSinceRegister = kFirstFrameGraceMs + 1;
+  LinkInputs decayed = liveInputs();
+  decayed.msSinceAccepted = kStaleDecayMs + 1;
+  CHECK(deriveLink(never, Status::Live) == deriveLink(decayed, Status::Live),
+        "a decayed panel and a freshly booted one give the same answer");
+
+  // Decay must not outrank the link-layer rungs above it. A decayed panel that has also lost WiFi is
+  // joining, not unreachable - otherwise the ladder would start telling you about the PC when the
+  // problem is the network in front of it.
+  in = liveInputs(); in.msSinceAccepted = kStaleDecayMs + 1; in.wifiAssociated = false;
+  CHECK(deriveLink(in, Status::Live) == LinkState::Joining, "row 1 still outranks the decay");
+  in = liveInputs(); in.msSinceAccepted = kStaleDecayMs + 1; in.hostResolved = false;
+  CHECK(deriveLink(in, Status::Live) == LinkState::Unresolved, "and so does row 2");
+  in = liveInputs(); in.msSinceAccepted = kStaleDecayMs + 1; in.versionRejected = true;
+  CHECK(deriveLink(in, Status::Live) == LinkState::VersionMismatch, "and row 3");
+
   // The precedence question the docs were asked to answer.
   in = liveInputs(); in.msSinceAccepted = 4000;
   CHECK(deriveLink(in, Status::AdapterFault) == LinkState::Stale,
