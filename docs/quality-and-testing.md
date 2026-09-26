@@ -340,7 +340,7 @@ named forcing in the catalogue itself.
 | Q16 · Q18 · Q20 | `CAP-WAKE-RIG` |  | Q20 | `SUCCESS-WAKE-FROM-PANEL` |
 | Q17 | `INV-WAKE-NEEDS-LEARNED-MAC` |  | Q19 | `ENTITY-RIGADDRESS` |
 | Q16 | `EVT-WAKE` |  | Q16 · Q18 | `COMPONENT-TOUCH` |
-| S13 | `SEC-WAKE-PHYSICAL-ONLY` |  | n/a — a wiring decision, proven by touch working at all | `ADR-TOUCH-SHARED-BUS` |
+| S13 | `SEC-WAKE-PHYSICAL-ONLY` |  | n/a — a wiring decision, proven by touch working at all | `ADR-TOUCH-OWN-BUS` |
 | Q15 · D8 | `INV-BLANK-BOUND` |  |  |  |
 | A9 · U10 | `SCREEN-SETUP` |  | manual pass during an OTA | `SCREEN-UPDATE` |
 

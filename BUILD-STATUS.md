@@ -57,8 +57,8 @@ built in a single layer.
 | 20 | Documentation, notice, provenance, release | cross-cutting | ☐ | — | `G1` · `G3` · `G5` · `G7` · `V5` · `V6` |
 | 21 | Adopter unaided-setup trial | verification-only | ☐ | — | `A10` |
 | 22 | Drive it and record the criteria | verification-only | ☐ | — | `A1` |
-
-| 23 | Backlight blanking | full | ✅ | **on-rig** | `Q12`–`Q15` · GPIO 21 confirmed to darken the glass 2026-09-26; blanked at ~48 s with the period at 1 minute, and woke on telemetry. Schema-2 migration held: host and credential survived, the new field arrived at its default |
+| 23 | Backlight blanking | full | ✅ | **on-rig** | `Q12`–`Q15`. GPIO 21 darkens this panel — confirmed 2026-09-26, which unblocked this slice and slice 24. Blanked at ~48 s with the period at one minute and woke on telemetry. Schema 2 migrated in place: host and credential survived, `blankAfterMinutes` arrived at its default. First real exercise of `INV-CONFIG-MIGRATION` |
+| 24 | Wake the rig from the panel | full | ◐ | **on-bench** | **`Q16` passed on the wire 2026-09-26** — two touches from a blanked `unreachable` panel produced **exactly one** 102-octet datagram from the panel's address on UDP 9: six `0xFF`, then the learned address sixteen times, identically. The first touch put nothing on the wire, which is the half the glass cannot show. `Q19` passed in part: the address was learned from the ARP cache on the first accepted frame and survived a reboot — but a firmware restart, not the rig power-cycle the check asks for. `Q17` and `Q18` hold at the unit tier against the pure sequence; neither has been provoked on the device. **`Q20` is the open one** and needs the rig — the only check here that can fail for reasons outside this product |
 
 ## Gate status
 

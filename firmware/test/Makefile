@@ -15,8 +15,14 @@ ENGINE_OUT = test_display_state
 JSON_SRC   = ../src/state_json.cpp test_state_json.cpp
 JSON_OUT   = test_state_json
 
+# The wake sequence and the magic packet. Host-compilable for the same reason: the packet layout is
+# exactly checkable and entirely unobservable in the field, since it is consumed by a powered-down
+# machine that never replies.
+WAKE_SRC   = ../src/wake.cpp ../src/display_state.cpp test_wake.cpp
+WAKE_OUT   = test_wake
+
 .PHONY: all test clean
-all: $(ENGINE_OUT) $(JSON_OUT)
+all: $(ENGINE_OUT) $(JSON_OUT) $(WAKE_OUT)
 
 $(ENGINE_OUT): $(ENGINE_SRC) ../src/display_state.h
 	$(CXX) $(CXXFLAGS) -o $(ENGINE_OUT) $(ENGINE_SRC)
@@ -24,9 +30,13 @@ $(ENGINE_OUT): $(ENGINE_SRC) ../src/display_state.h
 $(JSON_OUT): $(JSON_SRC) ../src/state_json.h ../src/net_counters.h ../src/display_state.h
 	$(CXX) $(CXXFLAGS) -o $(JSON_OUT) $(JSON_SRC)
 
-test: $(ENGINE_OUT) $(JSON_OUT)
+$(WAKE_OUT): $(WAKE_SRC) ../src/wake.h ../src/display_state.h
+	$(CXX) $(CXXFLAGS) -o $(WAKE_OUT) $(WAKE_SRC)
+
+test: $(ENGINE_OUT) $(JSON_OUT) $(WAKE_OUT)
 	./$(ENGINE_OUT)
 	./$(JSON_OUT)
+	./$(WAKE_OUT)
 
 clean:
-	rm -f $(ENGINE_OUT) $(ENGINE_OUT).exe $(JSON_OUT) $(JSON_OUT).exe
+	rm -f $(ENGINE_OUT) $(ENGINE_OUT).exe $(JSON_OUT) $(JSON_OUT).exe $(WAKE_OUT) $(WAKE_OUT).exe

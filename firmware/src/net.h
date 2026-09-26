@@ -17,6 +17,9 @@
 #define CYD_NET_H
 
 #include <stdint.h>
+
+#include <IPAddress.h>
+
 #include "display_state.h"
 #include "net_counters.h"
 
@@ -31,6 +34,10 @@ constexpr uint16_t kPort = 47110;
 // after 6 s, so 2 s means three announcements inside every expiry window: one may be lost, and a
 // second may be lost, without the device ever going dark.
 constexpr uint32_t kRegisterIntervalMs = 2000;
+
+// EVT-WAKE's port. Fixed by the Wake-on-LAN convention rather than chosen here, and not ours to
+// version - see EVT-WAKE. Nothing listens on it at either end.
+constexpr uint16_t kWakePort = 9;
 
 /// What the receive path reports upward after one poll.
 struct PollResult {
@@ -48,6 +55,17 @@ void maintainRegistration(const char* deviceId, const char* firmwareVersion,
 
 /// Drain the socket, at most `maxDatagrams` per call so one noisy host cannot starve the renderer.
 PollResult poll(StampTracker& stamps, Counters& counters, uint32_t nowMs, int maxDatagrams = 8);
+
+/// Emit EVT-WAKE for `mac`: one 102-octet magic packet, broadcast on the local subnet.
+///
+/// Returns whether the datagram left this device. That is NOT whether the rig woke, and no call here
+/// can tell you that - the packet is consumed by a powered-down machine's network adapter and there
+/// is no reply. A true return means the send path worked.
+bool sendWake(const uint8_t mac[6]);
+
+/// The source address of the newest accepted frame, if any has arrived. This is how the rig's address
+/// is learned: it is the address that actually answered.
+bool lastSender(IPAddress& out);
 
 /// Counters and diagnostics for API-STATE.
 const Counters& counters();

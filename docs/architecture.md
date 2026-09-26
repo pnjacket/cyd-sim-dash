@@ -189,7 +189,7 @@ constraint in Product & Requirements.
 | `COMPONENT-PUBLISHER` | Frame publisher | Owns the UDP socket. Receives registrations, maintains the device table keyed on device identity, serialises and unicasts frames, and optionally writes captures | The UDP surface on the fixed port | `COMPONENT-PLUGIN-CORE` |
 | `COMPONENT-REPLAY` | Replay tool | Standalone Python script that reads a capture and emits frames, so firmware work needs neither SimHub nor a sim | Command line | A capture file |
 | `COMPONENT-NET` | Device network layer | Joins WiFi, resolves the host, registers on an interval, receives datagrams, validates version and fields, orders by stamp, publishes into the shared buffer. Runs on the WiFi core | The registration keepalive | WiFi stack; ArduinoJson Also emits `EVT-WAKE`, because the magic packet is a datagram and this component owns the socket |
-| `COMPONENT-TOUCH` | Touch input | Reads the touch controller, debounces it, and reports a press. Holds the two-press sequence for `CAP-WAKE-RIG` and nothing else | A press predicate | `COMPONENT-RENDER` for the shared SPI bus |
+| `COMPONENT-TOUCH` | Touch input | Reads the touch controller, debounces it, and reports a press — a press, not a position, because the one touch action is available anywhere on the glass. Holds the two-press sequence for `CAP-WAKE-RIG` and nothing else | A press predicate | **None.** It has its own SPI bus, so it does not depend on `COMPONENT-RENDER` — see `ADR-TOUCH-OWN-BUS` |
 | `COMPONENT-STATE` | Display-state engine | Derives display state from the newest accepted frame plus its age. Pure logic, no drawing, **no per-title branch** | — | `COMPONENT-NET` output |
 | `COMPONENT-RENDER` | Renderer | Paints display state to the panel using dirty regions; owns layout geometry. Runs on the application core | — | TFT_eSPI; `COMPONENT-STATE` Also owns the **backlight**, including the idle blanking of `CAP-BLANK`: the pin is the renderer's, and putting the timer anywhere else would mean two owners for one piece of hardware |
 | `COMPONENT-WEB` | Portal, configuration page and state endpoint | Serves the provisioning portal when unprovisioned or unable to connect, the authenticated configuration page while connected, and the read-only `API-STATE` endpoint in every build | Three HTTP surfaces | WiFiManager; `COMPONENT-CONFIG`; `COMPONENT-STATE` |
@@ -224,12 +224,41 @@ reconfiguration by `COMPONENT-WEB` and `COMPONENT-CONFIG`; publication by
 | `ADR-STATUS-FRAME` | Publish frames even when there is no telemetry, carrying a status | Makes silence mean exactly one thing, so the link is diagnosable from the panel alone. Cost: a status field, and three more device states to specify |
 | `ADR-ARDUINO-OTA` | Arduino IDE with OTA updates rather than PlatformIO | Lowest barrier for the adopter persona. Cost: no version pinning, so exact library versions must be documented by hand |
 | `ADR-OTA-EXCLUSIVE` | While an update is transferring, the device loop services the update and nothing else — telemetry, rendering and the HTTP surface all pause until it finishes or fails | Rejected: servicing everything concurrently, which is what shipped until 2026-09-23 and which **failed on the rig**. An upload is a TCP stream needing prompt attention; at ~60 Hz the receive path, renderer and web server together starved it and the transfer aborted mid-flight. Cost: telemetry is dropped for those seconds, which is free — the device is about to reboot into new firmware, and a panel mid-update is not one anybody is driving past. A failed update clears the flag, so a botched transfer cannot leave the panel mute |
-| `ADR-TOUCH-SHARED-BUS` | The touch controller is read over the display's SPI bus, arbitrated by its own chip select, at a clock the controller tolerates rather than the display's | Rejected: a second bus, which the board does not offer; and polling touch at the display's 80 MHz, which the XPT2046 does not support — it needs roughly 2.5 MHz. Cost: every touch read reconfigures the bus clock, so touch is polled at a low rate and never during a frame draw. That is affordable precisely because touch does one thing in one state |
+| `ADR-TOUCH-OWN-BUS` | The touch controller is read over **its own** SPI bus — a second peripheral on four pins of its own, at its own clock | This board routes the XPT2046 to SCK 25, MISO 39, MOSI 32, CS 33, which is not the display's set. Rejected: the display's bus with a second chip select, which is what TFT_eSPI's built-in touch support assumes and what `TOUCH_CS` would select — on this board that polls the touch chip on the wrong pins and produces contention, exceptions or silence. Cost: none that materialised. The display keeps 80 MHz, touch runs at 2 MHz, and neither reconfigures anything for the other. **This row replaced `ADR-TOUCH-SHARED-BUS` on 2026-09-26** — see the note below |
 | `ADR-TFT-ESPI` | TFT_eSPI for graphics | Direct and light for four hand-drawn elements; LVGL is heavier than this UI justifies. Cost: pin configuration lives in the library's header, the best-known cause of a blank CYD screen |
 | `ADR-TWO-TASKS` | Split network and rendering across the ESP32's two cores | A full-screen repaint is roughly 150 KB over SPI and blocks its thread for tens of milliseconds; the second core would otherwise sit idle. Cost: a shared-state handoff that must be correct — see `PATTERN-STATE-HANDOFF` |
 | `ADR-DIRTY-REGIONS` | Repaint only what changed | Most frames repaint nothing; the flash costs full fills at flash rate rather than frame rate. Cost: the renderer tracks what it has drawn |
 | `ADR-STD-LIBS` | Use ArduinoJson and WiFiManager rather than hand-rolling | Hardened parsing on the one path an untrusted LAN device can reach, and a standard portal. Cost: two more unpinned dependencies for an adopter |
 | `ADR-REPLAY-STANDALONE` | The replay tool is a standalone Python script | Must run with SimHub shut, which is its purpose. Cost: a second language on the PC side, and no shared serialiser with the C# publisher |
+
+### The touch ADR was wrong, and the code is what found it
+
+`ADR-TOUCH-SHARED-BUS` was authored on 2026-09-26 ahead of the code, and its premise was false. It
+recorded that a second bus had been *rejected* because "the board does not offer" one. The board does:
+the ESP32-2432S028R routes the XPT2046 to four pins of its own, and the ESP32 has a spare SPI
+peripheral to drive them with. It is `ADR-TOUCH-OWN-BUS` now.
+
+The error was not a detail. Everything the old row recorded as a cost followed from the false premise
+— reconfiguring the bus clock around each read, polling at a low rate, never reading during a frame
+draw, and a dependency from `COMPONENT-TOUCH` on `COMPONENT-RENDER` to arbitrate it. None of that
+exists. Had the code been written to the ADR it would have been written to work around a constraint
+that was not there, and the 80 MHz display clock — itself a measured fix for the shift-cue tearing —
+would have been the first thing sacrificed to it.
+
+It is worth being precise about what went wrong, because the failure mode is not "a guess turned out
+badly". Authoring ahead of the code is the flow working as intended, and an assumption that turns out
+false is the expected outcome some fraction of the time. What was missing is that the row asserted a
+hardware fact — what pins this board routes where — in the voice of a decision, with no
+`[ASSUMPTION]` marker and without being checked, when checking it cost one search. A decision may
+rest on a judgement; it may not quietly invent the constraint it claims to be answering.
+
+There is one further consequence worth recording, because it points the other way. The correct wiring
+makes TFT_eSPI's own touch support unusable here: it assumes the shared bus, and defining `TOUCH_CS`
+would aim it at the display's pins. The obvious answer is the library everyone uses for this board,
+which would be a **fourth** external dependency and would break `R9` and `ADR-STD-LIBS`. The read is
+three SPI transactions, so it is hand-rolled in `COMPONENT-TOUCH` instead and the library list is
+unchanged — with the derivation attested in `PROVENANCE.md`, since "hand-rolled" and "written from
+nothing" are not the same claim.
 
 ## Acceptance criteria
 

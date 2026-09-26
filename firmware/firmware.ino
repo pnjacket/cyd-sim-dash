@@ -33,6 +33,9 @@
 #include "src/identity.h"
 #include "src/net.h"
 #include "src/panel.h"
+#include "src/rigaddr.h"
+#include "src/touch.h"
+#include "src/wake.h"
 #include "src/state_api.h"
 #include "src/web.h"
 
@@ -71,6 +74,14 @@ static uint32_t      g_lastAcceptedMs = 0;
 // rather than staying lit forever waiting for a first frame it may never get.
 static uint32_t      g_lastDrivingMs = 0;
 static bool          g_backlightOn = true;
+
+// CAP-WAKE-RIG. The two-touch sequence, and whether the offer is currently on the glass.
+//
+// g_offerShown is tracked separately from the sequence's own armed flag because the offer is a screen
+// and g_shown - which decides whether the link screen needs redrawing - has no LinkState that means
+// "offering". Conflating them would leave the offer on screen after the window lapsed.
+static wake::Sequence g_wake;
+static bool           g_offerShown = false;
 
 // ---------------------------------------------------------------------------
 
@@ -152,6 +163,7 @@ void setup() {
   Serial.print("."); Serial.println(kProtocolMinor);
 
   panel::begin();
+  touch::begin();
 
   panel::drawBoot(g_deviceId, kFirmwareVersion);
   Serial.println("[boot] identity screen shown");
@@ -198,6 +210,11 @@ void setup() {
 
   startOta();
 
+  // After WiFi, because a stored hardware address is only useful once there is a network to send on.
+  rigaddr::begin();
+  Serial.print("[wake] rig address ");
+  Serial.println(rigaddr::known() ? "known from storage" : "not learned yet - wake unavailable");
+
   if (net::begin()) {
     Serial.print("[net] listening on udp/");
     Serial.println(net::kPort);
@@ -243,6 +260,13 @@ void loop() {
     g_haveFrame = true;
     g_lastAcceptedMs = now;
     g_versionRejected = false;   // a good frame clears a previous mismatch
+
+    // ENTITY-RIGADDRESS is learned here and nowhere else: a frame has just arrived from the PC, so
+    // the ARP cache has a fresh entry for it and the address is confirmed rather than inferred. This
+    // is also the only moment it can be learned - by the time the operator wants a wake, the machine
+    // is off and unfindable.
+    IPAddress sender;
+    if (net::lastSender(sender)) rigaddr::observe(sender);
   }
   if (got.versionRejected) g_versionRejected = true;
 
@@ -267,6 +291,51 @@ void loop() {
   // assertable at all before the glass shows it.
   const DisplayState display = derive(g_lastFrame, in);
 
+  // CAP-WAKE-RIG, before the backlight decision and before the screen, because a touch changes both.
+  //
+  // The offer is lapsed first so a touch arriving just after the window is read as a first touch
+  // rather than a second. Then the press itself: every outcome lights the panel and restarts the
+  // blanking period, which is what makes a dark panel usable and is the one way the backlight comes
+  // on other than a live frame.
+  g_wake.tick(now);
+  if (g_offerShown && !g_wake.armed()) {
+    g_offerShown = false;
+    g_shown = static_cast<LinkState>(0xFF);   // the offer lapsed; the link screen is owed a redraw
+  }
+
+  bool wakeSent = false;
+  if (touch::pressed(now)) {
+    g_lastDrivingMs = now;                    // a touch restarts the blanking period
+    const wake::TouchAction action = g_wake.onTouch(now, state, rigaddr::known());
+
+    switch (action) {
+      case wake::TouchAction::Offered:
+        Serial.println("[wake] offer shown - a second touch sends the packet");
+        panel::drawWakeOffer();
+        g_offerShown = true;
+        break;
+
+      case wake::TouchAction::Sent:
+        // EVT-WAKE has no observable post-condition, so this log line and the brief confirmation are
+        // the only evidence the operator or a later investigation will ever have that it happened.
+        wakeSent = net::sendWake(rigaddr::mac());
+        Serial.print("[wake] magic packet ");
+        Serial.println(wakeSent ? "sent" : "NOT sent - the send path failed");
+        g_offerShown = false;
+        g_shown = static_cast<LinkState>(0xFF);
+        break;
+
+      case wake::TouchAction::Lit:
+        // Either the state has no action, or no address has ever been learned. The panel lights and
+        // offers nothing - INV-WAKE-NEEDS-LEARNED-MAC. Saying so on serial is what makes the second
+        // case diagnosable at all, since the glass looks identical either way.
+        if (state == LinkState::Unreachable && !rigaddr::known()) {
+          Serial.println("[wake] touched, but no rig address has been learned - nothing to offer");
+        }
+        break;
+    }
+  }
+
   stateapi::Context ctx;
   ctx.deviceId = g_deviceId;
   ctx.firmwareVersion = kFirmwareVersion;
@@ -282,6 +351,8 @@ void loop() {
   ctx.drawCount = panel::drawCount();
   ctx.backlightOn = g_backlightOn;
   ctx.blankAfterMinutes = g_cfg.blankAfterMinutes;
+  ctx.wakeArmed = g_wake.armed();
+  ctx.rigMacKnown = rigaddr::known();
   stateapi::publish(display, ctx, g_counters);
   configpage::publishCounters(g_counters);
 
@@ -305,12 +376,28 @@ void loop() {
     if (wantLit) { panel::invalidate(); g_shown = static_cast<LinkState>(0xFF); }
   }
 
+  // The confirmation after a wake. Held briefly and blocking, which is affordable precisely here: the
+  // rig is off, so there is no telemetry to miss, and the alternative is a timer in the loop for a
+  // message shown once per power-up.
+  //
+  // It does NOT say "waking". The panel has no way to know whether the rig is coming up, and a
+  // message it cannot retract would keep asserting something it does not know. It reports what this
+  // device actually did - it sent a packet - and then gets out of the way and lets the ladder speak.
+  if (wakeSent) {
+    panel::drawMessage("Wake sent");
+    delay(1500);
+    panel::invalidate();
+  }
+
   if (state == LinkState::Driving) {
     if (g_shown != LinkState::Driving) {
       panel::invalidate();   // coming from the link screen: the glass holds something else
       Serial.println("[screen] driving");
     }
     panel::drawDriving(display, now);
+  } else if (g_offerShown && state == LinkState::Unreachable) {
+    // The offer owns the glass while it stands. Nothing to redraw - it is static - and redrawing the
+    // link screen underneath it is exactly the bug this branch exists to prevent.
   } else if (state != g_shown) {
     panel::invalidate();
     panel::drawLink(state);

@@ -207,6 +207,23 @@ void drawLink(LinkState state) {
   tft.drawString(linkLine(state), kWidth / 2, kHeight / 2, 4);
 }
 
+// Offering a wake. The unreachable line stays exactly where it was, and a second line appears below
+// it. Keeping the first line put is deliberate: the operator has just touched a dark panel, and a
+// screen that rearranges itself makes them re-read the part that has not changed.
+//
+// Amber for the invitation, so it reads as an action rather than as more status. Red is the flash's
+// and white is every other line's.
+void drawWakeOffer() {
+  tft.fillScreen(kBlack);
+  tft.setTextDatum(MC_DATUM);
+
+  tft.setTextColor(kWhite, kBlack);
+  tft.drawString(linkLine(LinkState::Unreachable), kWidth / 2, kHeight / 2 - 24, 4);
+
+  tft.setTextColor(kAmber, kBlack);
+  tft.drawString("Touch again to wake the PC", kWidth / 2, kHeight / 2 + 26, 2);
+}
+
 // ---------------------------------------------------------------------------
 // SCREEN-DRIVING - the product. All four elements, composed.
 // ---------------------------------------------------------------------------

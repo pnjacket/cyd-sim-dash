@@ -48,8 +48,12 @@
 #define TFT_WIDTH  240
 #define TFT_HEIGHT 320
 
-// SPI wiring. The display and the touch controller share the bus and are arbitrated by separate
-// chip selects; touch is unused in v1 and its CS is therefore left undriven.
+// SPI wiring - the DISPLAY's pins only.
+//
+// The touch controller is not on this bus. This board gives the XPT2046 four pins of its own, and
+// they are declared in touch.h against a second SPI peripheral; see ADR-TOUCH-OWN-BUS. `TOUCH_CS` is
+// deliberately NOT defined here: doing so switches on TFT_eSPI's own touch support, which assumes the
+// shared bus and would poll the touch chip on the display's pins.
 #define TFT_MISO 12
 #define TFT_MOSI 13
 #define TFT_SCLK 14

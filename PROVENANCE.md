@@ -19,7 +19,16 @@ entry here.
 
 | Unit | Origin | Licence | Compatible with MIT outbound | Date |
 |---|---|---|---|---|
-| *(none yet)* | | | | |
+| `cyd::touch::readPressure` — the XPT2046 pressure read | `XPT2046_Touchscreen` by Paul Stoffregen | MIT | Yes | 2026-09-26 |
+
+**On that one entry.** The control bytes are re-derived from the datasheet's channel encoding, and the
+pin assignment is a fact about the board. What is adapted is the part that is a *choice*: reading Z1
+and Z2 and combining them as `z1 + 4095 - z2` rather than thresholding either alone, the
+command-pipelining idiom where each transfer carries the next request, and the pressure floor of 400.
+Those came from that library, and it is attested rather than described as hand-rolled because
+"hand-rolled" and "written from nothing" are not the same claim — which is the whole point of this
+register. The library itself is deliberately **not** a dependency: adding it would make a fourth
+external library and break `R9` and `ADR-STD-LIBS`, and the read is three transactions.
 
 **Where the detection pass looks.** Targeted rather than exhaustive, at the units most likely to be
 reproductions. In this product that list is short and predictable:
@@ -36,7 +45,7 @@ Runs before the first public push, and before each release that added code.
 
 | Date | Scope | Findings | Residual |
 |---|---|---|---|
-| *(not yet run)* | | | |
+| 2026-09-26 | The touch read added in slice 24, against the highest-risk list above | One adaptation, attested above. The display setup was reviewed at the same time and its pin block is a board fact rather than a reproduction; the driver/inversion combination was settled by observation on real glass, recorded in `tft_config.h` | The captive-portal handling and the hand-written JSON helpers have still not had a pass. Not cleared — owed |
 
 ## Residual statement
 

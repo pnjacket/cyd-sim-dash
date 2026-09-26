@@ -125,6 +125,12 @@ an arriving frame rather than by a user action:
   window sends the packet; the window lapsing returns the panel to `unreachable` and, if the blanking
   period has passed, to dark.
 
+  **The offer window is ten seconds**, decided 2026-09-26. A judgement rather than a measurement, and
+  recorded here so it is not read as one: the operator has just touched a panel that was dark, has to
+  read a line that was not there a moment ago, and then decide. Two seconds would make the second
+  touch a reflex test. Much longer and the panel sits armed after whoever touched it has walked away,
+  which is the state the two-touch rule exists to avoid.
+
   **The first touch never sends.** A blanked panel cannot show what a touch is about to do, so the
   first one only makes the offer legible. That costs a second touch every time and buys immunity from
   a sleeve brushing the glass — a spurious wake is not catastrophic, but a panel that does things

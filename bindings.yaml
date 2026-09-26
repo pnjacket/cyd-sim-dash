@@ -235,31 +235,55 @@ bindings:
     - path: firmware/src/net.cpp
       symbol: cyd::net::poll             # drained and counted without being parsed
 
-  # --- doc-feature 2026-09-23: backlight blanking. UNBOUND ON PURPOSE ----------------
+  # --- CAP-BLANK, built in slice 23 on 2026-09-26 ------------------------------------
   #
-  # These are the planner's build-new signal. No locators until the code exists; pointing a binding
-  # at code that has not been written is how a map starts lying.
-  #
-  # Blocked on a feasibility test: some ESP32-2432S028R revisions hardwire the backlight on, with
-  # GPIO 21 present but not gating the transistor. This build has only ever driven it HIGH, so
-  # driving it LOW has never been observed to do anything on this panel. If it is hardwired,
-  # CAP-BLANK is not implementable here and the delta is retired rather than built.
-  CAP-BLANK: []
-  INV-BLANK-BOUND: []
+  # The feasibility test came back positive: GPIO 21 darkens this panel. The rule is bound to the
+  # engine rather than to the loop, which is the substance of the binding - the loop drives a pin and
+  # holds no policy, so the policy is host-testable.
+  CAP-BLANK:
+    - path: firmware/src/display_state.cpp
+      symbol: cyd::backlightShouldBeOn   # the rule, pure and host-tested
+    - path: firmware/firmware.ino
+      symbol: g_backlightOn              # the pin, and the invalidate on waking
+    - path: firmware/src/panel.cpp
+      symbol: cyd::panel::backlight
+  INV-BLANK-BOUND:
+    - path: firmware/src/config.h
+      symbol: cyd::kBlankMinutesMax
+    - path: firmware/src/config.cpp
+      symbol: cyd::config::load          # out of range is unreadable, not clamped
+    - path: firmware/src/config_page.cpp
+      symbol: cyd::configpage             # and the form refuses rather than clamping on save
 
-  # --- doc-feature 2026-09-26: wake the rig from the panel. UNBOUND ON PURPOSE --------
-  #
-  # The planner's build-new signal. No locators until the code exists.
-  #
-  # Ordering note: slice 23 (CAP-BLANK) is a prerequisite in practice rather than on paper. The wake
-  # action lives in the `unreachable` state, which is exactly a state that blanks, so the two-touch
-  # sequence only makes sense once blanking exists - and blanking is itself blocked on a feasibility
-  # test of GPIO 21. If the backlight cannot be switched off, the first touch has nothing to wake and
-  # the sequence collapses to one touch.
-  CAP-WAKE-RIG: []
-  ENTITY-RIGADDRESS: []
-  INV-WAKE-NEEDS-LEARNED-MAC: []
-  EVT-WAKE: []
-  COMPONENT-TOUCH: []
-  ADR-TOUCH-SHARED-BUS: []
-  SEC-WAKE-PHYSICAL-ONLY: []
+  # --- CAP-WAKE-RIG, built in slice 24 on 2026-09-26 --------------------------------
+  CAP-WAKE-RIG:
+    - path: firmware/src/wake.cpp
+      symbol: cyd::wake::Sequence::onTouch   # the two-touch rule, pure and host-tested
+    - path: firmware/firmware.ino
+      symbol: g_wake                         # the loop wiring: touch, offer, send, confirm
+    - path: firmware/src/panel.cpp
+      symbol: cyd::panel::drawWakeOffer
+  ENTITY-RIGADDRESS:
+    - path: firmware/src/rigaddr.cpp
+      symbol: cyd::rigaddr::observe          # learned from the ARP cache, persisted in its own namespace
+    - path: firmware/firmware.ino
+      symbol: net::lastSender                # learned only on an accepted frame, which is the only moment it can be
+  INV-WAKE-NEEDS-LEARNED-MAC:
+    - path: firmware/src/wake.cpp
+      symbol: cyd::wake::Sequence::onTouch   # !macKnown returns Lit and never arms
+  EVT-WAKE:
+    - path: firmware/src/wake.cpp
+      symbol: cyd::wake::buildMagicPacket    # 102 octets or nothing, never a partial packet
+    - path: firmware/src/net.cpp
+      symbol: cyd::net::sendWake             # subnet broadcast, port 9
+  COMPONENT-TOUCH:
+    - path: firmware/src/touch.cpp
+      symbol: cyd::touch::pressed            # one press per press, debounced both ways
+  ADR-TOUCH-OWN-BUS:
+    - path: firmware/src/touch.h
+      symbol: cyd::touch::kSck               # the touch controller's own four pins, not the display's
+    - path: firmware/src/touch.cpp
+      symbol: cyd::touch::g_spi              # a second SPI peripheral, at its own clock
+  SEC-WAKE-PHYSICAL-ONLY:
+    - path: firmware/src/state_json.cpp
+      symbol: cyd::stateapi::render          # reports wakeArmed; offers no way to fire it

@@ -51,7 +51,7 @@ Three sittings need the rig, and they are the critical path. Everything else run
 | 21 | Adopter unaided-setup trial | verification-only | `SUCCESS-SETUP-UNAIDED`, `A10` | no | ☐ |
 | 22 | Drive it and record the criteria | verification-only | every `SUCCESS-*`, `A1` | **yes** | ☐ |
 | 23 | Backlight blanking | full | `CAP-BLANK`, `INV-BLANK-BOUND`, `ENTITY-DEVICECONFIG` schema 2, `UIF-CONFIG`, `API-STATE` | done | ✅ |
-| 24 | Wake the rig from the panel | full | `CAP-WAKE-RIG`, `ENTITY-RIGADDRESS`, `INV-WAKE-NEEDS-LEARNED-MAC`, `EVT-WAKE`, `COMPONENT-TOUCH`, `ADR-TOUCH-SHARED-BUS`, `SEC-WAKE-PHYSICAL-ONLY` | **yes**, and the rig's BIOS | ☐ after 23 |
+| 24 | Wake the rig from the panel | full | `CAP-WAKE-RIG`, `ENTITY-RIGADDRESS`, `INV-WAKE-NEEDS-LEARNED-MAC`, `EVT-WAKE`, `COMPONENT-TOUCH`, `ADR-TOUCH-OWN-BUS`, `SEC-WAKE-PHYSICAL-ONLY` | **yes**, and the rig's BIOS | ◐ built; `Q20` owed on the rig |
 | — | **v2 Go/No-Go gate** | decision | reserved to the operator | — | ☐ |
 
 ## The mapping sitting is done with a tool, not a picker
@@ -403,7 +403,34 @@ The bindings for `CAP-BLANK` and `INV-BLANK-BOUND` are deliberately empty. An un
 is the planner's build-new signal, and pointing a locator at code that does not exist is how a
 binding map starts lying.
 
-## Slice 24 follows 23, and the reason is not paperwork
+## Slice 24, built 2026-09-26
+
+`Q16` passed on the wire: two touches from a blanked `unreachable` panel produced exactly one
+102-octet datagram, and the first touch produced nothing. Watching the wire rather than the glass is
+the whole point of that check — `EVT-WAKE` has no acknowledgement and no observable post-condition, so
+a malformed packet would look identical to a correct one from this end, and the only symptom would be
+a rig that does not wake. Which has four likely causes on another machine before the firmware is even
+suspected.
+
+`Q20` is the one left, and it needs the rig.
+
+### The ADR was wrong and the code found it
+
+`ADR-TOUCH-SHARED-BUS` asserted that this board offers no second SPI bus. It does. The row is
+`ADR-TOUCH-OWN-BUS` now and the reasoning is in Architecture; what belongs here is the consequence for
+the build. Everything the old row recorded as a cost — reconfiguring the clock around each read,
+polling slowly, never reading during a frame draw, a dependency on `COMPONENT-RENDER` — followed from
+the false premise and none of it exists. Had the code been written to the ADR rather than to the
+board, the 80 MHz display clock would have been the first thing sacrificed to a constraint that was
+not there.
+
+The correct wiring then rules out TFT_eSPI's own touch support, which assumes the shared bus. The
+obvious answer is the library every CYD project uses, which would be a fourth external dependency and
+would break `R9`. The read is three SPI transactions, so it is hand-rolled and attested in
+`PROVENANCE.md` — that register's first entry, and it exists because "hand-rolled" and "written from
+nothing" are different claims.
+
+### Superseded: slice 24 follows 23, and the reason is not paperwork
 
 `CAP-WAKE-RIG` was authored doc-first on 2026-09-26. It depends on `CAP-BLANK` being real, not merely
 specified: the wake action lives in the `unreachable` state, which is exactly a state that blanks, and

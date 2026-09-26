@@ -36,6 +36,12 @@ struct Context {
   // is dark, which is exactly when it is needed.
   bool        backlightOn = true;
   uint16_t    blankAfterMinutes = 0;
+
+  // CAP-WAKE-RIG. Both fields exist because the capability fails SILENTLY when no address has been
+  // learned: there is no error path and nothing on the glass, so "the panel will not offer this" and
+  // "the rig is ignoring Wake-on-LAN" look identical from the seat. This is what tells them apart.
+  bool        wakeArmed = false;
+  bool        rigMacKnown = false;
 };
 
 /// The buffer the projection is rendered into.

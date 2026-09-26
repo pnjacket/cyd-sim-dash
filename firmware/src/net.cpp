@@ -5,6 +5,8 @@
 #include <WiFiUdp.h>
 #include <string.h>
 
+#include "wake.h"
+
 namespace cyd {
 namespace net {
 namespace {
@@ -14,6 +16,15 @@ bool     g_listening = false;
 uint32_t g_lastRegisterMs = 0;
 uint32_t g_lastAcceptedMs = 0;
 bool     g_everAccepted = false;
+
+// Where the newest accepted frame came from.
+//
+// The sender's address rather than a resolution of pcHost, and the difference matters: this is the
+// address that demonstrably answered, which is exactly the one the ARP cache will have an entry for.
+// Resolving the configured name again would give the same answer on a good day and a stale or
+// unrelated one otherwise, and ENTITY-RIGADDRESS would then be learned against the wrong machine.
+IPAddress g_lastSender;
+bool      g_haveSender = false;
 Counters g_counters;
 
 // The whole receive path's memory, allocated once. SEC-INPUT-BOUND: a fixed buffer and no dynamic
@@ -169,6 +180,8 @@ PollResult poll(StampTracker& stamps, Counters& counters, uint32_t nowMs, int ma
       case Reject::Accepted:
         g_lastAcceptedMs = nowMs;
         g_everAccepted = true;
+        g_lastSender = g_udp.remoteIP();
+        g_haveSender = true;
         result.frameAccepted = true;
         result.frame = f;
         break;
@@ -200,6 +213,35 @@ PollResult poll(StampTracker& stamps, Counters& counters, uint32_t nowMs, int ma
 const Counters& counters() { return g_counters; }
 uint32_t lastAcceptedAtMs() { return g_lastAcceptedMs; }
 bool everAccepted() { return g_everAccepted; }
+
+bool lastSender(IPAddress& out) {
+  if (!g_haveSender) return false;
+  out = g_lastSender;
+  return true;
+}
+
+bool sendWake(const uint8_t mac[6]) {
+  if (!g_listening || mac == nullptr) return false;
+
+  uint8_t packet[wake::kMagicPacketBytes];
+  if (wake::buildMagicPacket(mac, packet, sizeof(packet)) != sizeof(packet)) return false;
+
+  // Broadcast to the local subnet, not to the rig's IP.
+  //
+  // This is not a shortcut. The machine is powered down, so nothing there will answer an ARP query
+  // for its address; a unicast datagram would be dropped by this device's own stack before it ever
+  // reached the wire. The magic packet carries the destination in its payload instead, which is the
+  // whole reason the format exists, and the adapter recognises its own address in a frame addressed
+  // to everyone.
+  //
+  // Port 9 by convention. Nothing listens on it — the packet is consumed by the network adapter
+  // rather than by any software, which is also why there is no acknowledgement to wait for and
+  // nothing here returns whether it worked. EVT-WAKE records that as a post-condition: none, and
+  // none observable.
+  if (!g_udp.beginPacket(WiFi.broadcastIP(), kWakePort)) return false;
+  g_udp.write(packet, sizeof(packet));
+  return g_udp.endPacket() == 1;
+}
 
 }  // namespace net
 }  // namespace cyd

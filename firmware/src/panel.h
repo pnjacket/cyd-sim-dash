@@ -69,6 +69,12 @@ void drawMessage(const char* text);
 // [SLICE 14] The nine icons and the interpolating lines land with the link-state slice.
 void drawLink(LinkState state);
 
+// The wake offer, reached from `unreachable` by a touch. The unreachable line plus an invitation to
+// touch again. Serves CAP-WAKE-RIG; there is no corresponding "waking" screen, because the panel has
+// no way to know whether the rig is coming up and a message it cannot retract would keep asserting
+// something it does not know.
+void drawWakeOffer();
+
 // The plain-language line for a link condition. Exposed so tests and the serial log can use the
 // same strings the panel shows, rather than a second set that can drift.
 const char* linkLine(LinkState state);

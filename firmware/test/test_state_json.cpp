@@ -49,6 +49,10 @@ static void test_every_contracted_field_is_present() {
     "\"gearGlyph\"", "\"shiftPhase\"", "\"rampPosition\"", "\"barLeft\"", "\"barRight\"",
     "\"linkState\"", "\"configuredHost\"", "\"lastFrameAgeMs\"",
     "\"malformedCount\"", "\"fieldRangeCount\"", "\"outOfOrderCount\"", "\"versionRejectedCount\"",
+    // CAP-BLANK and CAP-WAKE-RIG both fail in ways that are invisible from the driving seat - a dark
+    // panel looks dead, and a wake that will never be offered looks like a rig ignoring the packet.
+    // These four fields are the whole of how those are told apart, so their presence is not optional.
+    "\"backlightOn\"", "\"blankAfterMinutes\"", "\"wakeArmed\"", "\"rigMacKnown\"",
   };
   for (size_t i = 0; i < sizeof(required) / sizeof(required[0]); ++i) {
     CHECK(contains(body, required[i]), required[i]);
@@ -165,6 +169,37 @@ static void test_values_render() {
   CHECK(contains(body, "\"deviceId\":\"a1b2c3d4e5f6\""), "the device identity is reported");
 }
 
+static void test_wake_fields_render_both_ways() {
+  section("CAP-WAKE-RIG's two fields distinguish the silent failure from the loud one");
+
+  DisplayState s;
+  net::Counters n;
+  char body[stateapi::kStateBufferBytes];
+
+  // The case that matters: an address has never been learned, so no touch will ever offer a wake.
+  // Nothing on the glass says so - by design, since offering an action that would do nothing is worse
+  // - which leaves this endpoint as the only way to tell it from a rig that ignores the packet.
+  stateapi::Context none;
+  none.rigMacKnown = false;
+  none.wakeArmed = false;
+  stateapi::render(body, sizeof(body), s, none, n);
+  CHECK(contains(body, "\"rigMacKnown\":false"), "an unlearned address reports false");
+  CHECK(contains(body, "\"wakeArmed\":false"), "and nothing is armed");
+
+  stateapi::Context armed;
+  armed.rigMacKnown = true;
+  armed.wakeArmed = true;
+  stateapi::render(body, sizeof(body), s, armed, n);
+  CHECK(contains(body, "\"rigMacKnown\":true"), "a learned address reports true");
+  CHECK(contains(body, "\"wakeArmed\":true"), "a standing offer reports armed");
+
+  // SEC-WAKE-PHYSICAL-ONLY. The endpoint reports whether the action is armed and offers no way to
+  // fire it. Asserted here because the temptation to add a POST for testing is exactly how a
+  // physical-only control acquires a network path.
+  CHECK(!contains(body, "wakeNow"), "no field invites triggering a wake");
+  CHECK(!contains(body, "sendWake"), "and none names the send path");
+}
+
 static void test_hostile_strings_cannot_break_the_json() {
   section("text from outside cannot break the document");
 
@@ -232,6 +267,11 @@ static void test_worst_case_fits_the_buffer() {
   c.uptimeMs = 4294967295u;
   c.resetReason = "interruptWatchdog";                  // the longest reason string
 
+  c.backlightOn = true;
+  c.blankAfterMinutes = 120;
+  c.wakeArmed = false;                                  // "false" is the longer rendering, so both
+  c.rigMacKnown = false;                                // booleans take their worst case here
+
   net::Counters n;
   n.malformed = n.fieldRange = n.outOfOrder = n.versionRejected = n.oversized = 4294967295u;
 
@@ -258,6 +298,7 @@ int main() {
   test_link_state_is_null_while_driving();
   test_counters_are_projected();
   test_values_render();
+  test_wake_fields_render_both_ways();
   test_hostile_strings_cannot_break_the_json();
   test_worst_case_fits_the_buffer();
 
