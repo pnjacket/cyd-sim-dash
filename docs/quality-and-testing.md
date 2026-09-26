@@ -7,7 +7,7 @@ trigger: always
 in-scope-subaspects: [test-pyramid-test-types, coverage-map, real-flow-e2e-standard, quality-bars-gates, test-data-strategy, specialized-testing, manual-exploratory]
 current-rung: contract-grade
 status: published
-version: 0.11.0
+version: 0.12.0
 ---
 
 # Quality & Testing — cyd-sim-dash
@@ -337,6 +337,10 @@ named forcing in the catalogue itself.
 | I11 · I12 · A9 | `SCREEN-PORTAL` |  | U10 · A7 | `JOURNEY-RECONFIG` |
 | U11 · A7 | `SCREEN-CONFIG` |  | U10 · I6 | `JOURNEY-VERSION-MISMATCH` |
 | Q12 · Q13 · Q14 · `SUCCESS-DARK-WHEN-IDLE` | `CAP-BLANK` |  | Q12 | `SUCCESS-DARK-WHEN-IDLE` |
+| Q16 · Q18 · Q20 | `CAP-WAKE-RIG` |  | Q20 | `SUCCESS-WAKE-FROM-PANEL` |
+| Q17 | `INV-WAKE-NEEDS-LEARNED-MAC` |  | Q19 | `ENTITY-RIGADDRESS` |
+| Q16 | `EVT-WAKE` |  | Q16 · Q18 | `COMPONENT-TOUCH` |
+| S13 | `SEC-WAKE-PHYSICAL-ONLY` |  | n/a — a wiring decision, proven by touch working at all | `ADR-TOUCH-SHARED-BUS` |
 | Q15 · D8 | `INV-BLANK-BOUND` |  |  |  |
 | A9 · U10 | `SCREEN-SETUP` |  | manual pass during an OTA | `SCREEN-UPDATE` |
 
@@ -419,4 +423,9 @@ named in prose.
 | Q13 | With `blankAfterMinutes` set to 0 the panel never blanks, however long it is left in a non-driving state | `CAP-BLANK`, its disable path |
 | Q14 | `SCREEN-UPDATE` and the `versionMismatch` condition stay lit past the configured period | the two stated exemptions |
 | Q15 | A configuration record written at schema 1 is migrated and gains `blankAfterMinutes` at its default; host and credential survive | `INV-CONFIG-MIGRATION` against its first real migration |
+| Q16 | From `unreachable` with the panel blanked, the **first** touch lights the panel and offers the wake and sends nothing — verified by watching the wire, not just the glass. The **second** emits exactly one `EVT-WAKE` of 102 octets whose payload is six `0xFF` followed by the learned address sixteen times | `CAP-WAKE-RIG`, and the two-touch rule |
+| Q17 | With no learned address, a touch lights the panel and offers **nothing**, and no packet is sent | `INV-WAKE-NEEDS-LEARNED-MAC` |
+| Q18 | In every link state other than `unreachable`, a touch lights the panel and arms nothing | the armed-state rule |
+| Q19 | The address is learned while the PC is reachable and survives the reboot that happens when the rig powers down — asserted by power-cycling the rig, not by writing the value directly | `ENTITY-RIGADDRESS` |
+| Q20 | **Against the real rig**: two touches start it and the panel reaches the driving screen unaided. This is the only check that can fail for reasons outside this product — Wake-on-LAN disabled in the rig's BIOS, fast startup defeating S5, or the adapter not retaining power — and a failure is triaged against the rig before it is triaged against the firmware | `SUCCESS-WAKE-FROM-PANEL` |
 

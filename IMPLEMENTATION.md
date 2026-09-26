@@ -51,6 +51,7 @@ Three sittings need the rig, and they are the critical path. Everything else run
 | 21 | Adopter unaided-setup trial | verification-only | `SUCCESS-SETUP-UNAIDED`, `A10` | no | ☐ |
 | 22 | Drive it and record the criteria | verification-only | every `SUCCESS-*`, `A1` | **yes** | ☐ |
 | 23 | Backlight blanking | full | `CAP-BLANK`, `INV-BLANK-BOUND`, `ENTITY-DEVICECONFIG` schema 2, `UIF-CONFIG`, `API-STATE` | **feasibility test first** | ☐ blocked |
+| 24 | Wake the rig from the panel | full | `CAP-WAKE-RIG`, `ENTITY-RIGADDRESS`, `INV-WAKE-NEEDS-LEARNED-MAC`, `EVT-WAKE`, `COMPONENT-TOUCH`, `ADR-TOUCH-SHARED-BUS`, `SEC-WAKE-PHYSICAL-ONLY` | **yes**, and the rig's BIOS | ☐ after 23 |
 | — | **v2 Go/No-Go gate** | decision | reserved to the operator | — | ☐ |
 
 ## The mapping sitting is done with a tool, not a picker
@@ -385,6 +386,42 @@ LDR on GPIO 34 would remain as a different feature, not a substitute.
 The bindings for `CAP-BLANK` and `INV-BLANK-BOUND` are deliberately empty. An unbound new contract
 is the planner's build-new signal, and pointing a locator at code that does not exist is how a
 binding map starts lying.
+
+## Slice 24 follows 23, and the reason is not paperwork
+
+`CAP-WAKE-RIG` was authored doc-first on 2026-09-26. It depends on `CAP-BLANK` being real, not merely
+specified: the wake action lives in the `unreachable` state, which is exactly a state that blanks, and
+the whole two-touch sequence exists *because* the panel is dark when you walk up to it. If the
+backlight cannot be switched off — which slice 23's feasibility test has not yet settled — the first
+touch has nothing to wake and the sequence collapses to a single touch, which is a different design
+and a different decision.
+
+So 23's GPIO 21 test gates 24 as well. One two-second test settles both.
+
+### What this feature can fail on that is not ours
+
+`SUCCESS-WAKE-FROM-PANEL` is the only success criterion in this product that can fail for reasons
+entirely outside it. Wake-on-LAN needs, on the rig: a wired Ethernet connection (confirmed
+2026-09-26); the feature enabled in BIOS or UEFI; the adapter permitted to wake the machine, ideally
+restricted to magic packets; and Windows fast startup **off**, because it defeats wake from S5.
+
+`Q20` therefore says a failure is triaged against the rig before it is triaged against the firmware.
+Without that instruction the obvious reading of a dead panel touch is "the firmware is broken", and
+four of the five likely causes are settings on another machine.
+
+### One observation that made the whole feature possible
+
+The scoped-out list asserted that "a mounted device is rarely powered independently of the rig", and
+used it to defer standby. It was wrong about this rig, and checking rather than believing it is what
+established two things at once: `CAP-BLANK` is worth having, and `CAP-WAKE-RIG` is possible at all.
+Observed 2026-09-26 — panel up for 7.6 minutes reporting `unreachable` while the rig did not answer a
+ping. A panel that died with the rig would have nothing to touch.
+
+It also validated the operator's choice of `unreachable` as the armed state over my objection. I had
+reasoned from the link ladder that `stale` would be the common case, because `everAccepted` latches
+for the session — true, but irrelevant here: the panel power-cycles when the rig goes down, so it
+boots into `unreachable` rather than lingering in `stale`. The ladder was right and my inference from
+it was wrong, because I had not checked how the thing is powered.
 
 ## Two contracts with no natural home
 

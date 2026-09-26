@@ -7,7 +7,7 @@ trigger: always
 in-scope-subaspects: [problem-motivation, target-users-personas, goals-success-criteria, capability-register, constraints-assumptions, risks]
 current-rung: contract-grade
 status: published
-version: 0.7.0
+version: 0.8.0
 ---
 
 # Product & Requirements — cyd-sim-dash
@@ -50,7 +50,12 @@ target.
 - **Not a full telemetry dash.** No speed, lap times, delta, fuel, tyre temperatures, position or
   flags. Four elements, deliberately. Adding a fifth is a change event, not a free extension.
 - **Not a replacement for the in-game HUD.** It supplements what the sim already shows.
-- **No control input.** The device displays; it never commands the sim. The touchscreen is unused
+- **No control input over the sim.** The device never commands the sim, the car, or the session, and
+  nothing it sends can affect a lap. `CAP-WAKE-RIG` is the one exception to the *device sends
+  nothing* reading of this principle and deliberately not an exception to the principle itself: a
+  Wake-on-LAN packet reaches the rig's network adapter while the machine is off, and a machine that
+  is off is not running a sim. The narrower rule this now states is what was always meant. The
+  touchscreen was unused
   in v1.
 - **No per-title behaviour on the device, ever.** A consequence of the adapter constraint rather
   than a separate decision, and load-bearing enough to state as a non-goal: the firmware contains
@@ -59,9 +64,11 @@ target.
   the repository and Quality & Testing depends on it, but it is not documented for end users, owns
   no user-facing capability, and its file format carries no stability commitment.
   [FUTURE-SCOPE] Re-entry if users are ever asked to attach captures to bug reports.
-- **No standby or blanking mode** — *deferred*. The dimmed idle screen is considered sufficient; a
-  mounted device is rarely powered independently of the rig. [FUTURE-SCOPE] Re-entry if the night
-  comfort criterion fails.
+- ~~**No standby or blanking mode** — deferred.~~ **In scope from 2026-09-23** as `CAP-BLANK`. The
+  reasoning that deferred it was wrong on its facts: it assumed "a mounted device is rarely powered
+  independently of the rig", and this one is — observed 2026-09-26 with the panel up for 7.6 minutes
+  while the rig was unreachable. That same observation is what makes `CAP-WAKE-RIG` possible at all,
+  since a panel that died with the rig would have nothing to touch.
 
 ### Scoped-out measurement
 
@@ -296,6 +303,7 @@ that proves the capability.
 | `CAP-PROVISION` | Capture WiFi credentials and the PC host through a captive portal when unprovisioned or unable to connect, and persist them across reboots | adopter | in | setup-unaided criterion |
 | `CAP-RECONFIG` | Allow the PC host and WiFi settings to be changed while connected, through an authenticated configuration page served on the device's own address | operator | in | acceptance check A7 |
 | `CAP-BLANK` | Switch the panel's backlight **off** after a configured period in which the driving screen has not been showing, and switch it back on the instant a live frame is accepted. The period is operator-configurable and the feature is disableable | operator | in | `SUCCESS-DARK-WHEN-IDLE` · `SUCCESS-NIGHT-COMFORT` |
+| `CAP-WAKE-RIG` | Wake the sim PC from the panel. While the link state is `unreachable`, a touch lights the backlight and offers the action; a second touch sends a Wake-on-LAN magic packet to the rig's stored hardware address | operator | in | `SUCCESS-WAKE-FROM-PANEL` |
 | `CAP-PUBLISH` | Read SimHub properties through the title adapter matching the running sim and stream normalised telemetry frames to each registered device | operator | in | acceptance check A8 |
 
 ### Product success criteria
@@ -310,6 +318,7 @@ Each is recorded by the operator as met or not met, in ordinary use. Verificatio
 | `SUCCESS-NO-DISTRACTION` | In ordinary use, the driver reports no instance of the panel pulling their eye at a moment it should not have | all four display capabilities |
 | `SUCCESS-NIGHT-COMFORT` | When driving in a darkened room, the driver reports the panel is not uncomfortable to sit beside, including during shift flashes | `CAP-SHIFT` |
 | `SUCCESS-DARK-WHEN-IDLE` | With the rig powered on and SimHub running but no sim on track, the panel is dark within the configured period, and lights within one frame interval of telemetry resuming. Measured by leaving the rig idling and then driving | `CAP-BLANK` |
+| `SUCCESS-WAKE-FROM-PANEL` | With the rig powered off and the panel showing `unreachable`, two touches start the rig, and the panel reaches the driving screen without the operator going to the PC or to another machine. Measured once against the real rig | `CAP-WAKE-RIG` |
 | `SUCCESS-LINK-DIAGNOSABLE` | On each occasion telemetry is absent, the operator determines **which link is broken** from the panel alone, without a laptop or a network tool — **minus one traced exception**: the panel names the condition but not the configured address, so distinguishing a wrong-but-resolvable host from a switched-off PC requires the configuration page. Traced to the User Experience decision that the link screen is icon-plus-line with detail on the configuration page | `CAP-LINKSTATE` |
 | `SUCCESS-SETUP-UNAIDED` | An adopter goes from a flashed device to a working panel using only the repository README, without contacting the operator | `CAP-PROVISION` |
 

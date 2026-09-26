@@ -7,7 +7,7 @@ trigger: always
 in-scope-subaspects: [domain-entities-relationships, identifiers, business-invariants-rules, lifecycle-states, data-classification-tags, persistence-storage-schema, migrations-versioning]
 current-rung: contract-grade
 status: published
-version: 0.8.0
+version: 0.9.0
 ---
 
 # Domain & Data — cyd-sim-dash
@@ -205,6 +205,23 @@ firmware starts blanking without anyone asking it to. The alternative — defaul
 would mean nobody gets the feature without finding the setting, which is a feature nobody asked to
 opt into. `CAP-BLANK` is the reason the field exists, so it defaults to on.
 
+### Why the rig's address is learned rather than typed
+
+`ENTITY-RIGADDRESS` is the first thing in this product that the device knows and the operator never
+told it. That is deliberate and it follows the same reasoning as the wire contract's device-initiated
+addressing: the plugin holds no configuration because the device announces itself, and here the
+operator configures no hardware address because the device can observe it.
+
+The alternative was a field on the configuration page holding twelve hex digits. It was rejected on
+failure shape rather than on effort: a mistyped MAC produces a packet that is silently delivered
+nowhere. There is no error, no rejection and nothing to diagnose — the rig simply does not wake, which
+is indistinguishable from Wake-on-LAN being disabled in its BIOS. A learned address cannot be
+mistyped, and when it is absent the panel knows it is absent and says so.
+
+The cost is that it degrades rather than failing loudly: a panel that has never seen the PC reachable
+has nothing to send to. `INV-WAKE-NEEDS-LEARNED-MAC` makes that state explicit rather than letting
+the panel offer an action it cannot perform.
+
 ## Dependencies & Cross-references
 
 | Consumed from | What | Why |
@@ -276,6 +293,7 @@ cannot migrate it, discards it, and raises the portal. Settings are lost and re-
 | `ENTITY-DISPLAYSTATE` | What the panel should show | `gearGlyph` 1–2 chars · `shiftPhase` one of `neutral` \| `ramping` \| `flashing` \| `unavailable` · `rampPosition` 0..1 when ramping · `barLeft` bool · `barRight` bool · `linkState` **nullable** — `null` when the driving screen is showing, otherwise one of `drivingPending` \| `noSim` \| `unsupportedTitle` \| `adapterFault` \| `stale` \| `joining` \| `unresolved` \| `versionMismatch` \| `unreachable` | Derived on the device from the newest acceptable frame plus its age. Never transmitted, never persisted |
 | `ENTITY-REGISTRATION` | Device announcement and keepalive | `protocolMajor` int · `protocolMinor` int · `deviceId` string — see Identifiers · `firmwareVersion` string | Device to PC, repeated on an interval. The plugin keys its table on `deviceId` and replies to the packet's source address |
 | `ENTITY-DEVICECONFIG` | Persisted device settings | `schemaVersion` int · `ssid` ≤32 octets · `wifiPassword` 8–63 chars, `secret` · `pcHost` ≤253 chars · `credential` `secret` | Singleton per device. No port field — the port is fixed  **Schema version 2 from 2026-09-23**, adding `blankAfterMinutes`. |
+| `ENTITY-RIGADDRESS` | Learned hardware address of the sim PC | `mac` six octets · `learnedAtMs` monotonic ms when it was last confirmed | **Learned, never configured.** Read from the device's own ARP cache for `pcHost` while the PC is reachable, and persisted so it survives the reboot that happens when the rig powers down. Not part of `ENTITY-DEVICECONFIG`: that record is what the *operator* set, and conflating a learned fact with a configured one would put a value on the configuration page that nobody typed and nobody should edit. Carries no classification tag — a MAC on the operator's own LAN identifies a machine they own, not a person |
 | `ENTITY-GAMEPROFILE` | Per-adapter fallback constants | `titleId` string · `rampStartFraction` 0..1, default 0.88 · `flashFraction` 0..1, default 0.97 | Lives on the PC inside its adapter. Never transmitted |
 | `ENTITY-CAPTURE` | Recorded fixture | ordered lines of `{offsetMs, frame}` | Line-delimited JSON. Contains only frame fields, so it carries nothing tagged `secret` or identifying |
 
@@ -296,6 +314,7 @@ Gear-value domain, referenced above: `R`, `N`, or an integer 1–18.
 | `INV-CONFIG-SINGLETON` | Exactly one configuration record exists per device | **Structural** — one fixed NVS namespace and key set, written as a single operation; the store cannot represent a second record |
 | `INV-CONFIG-MIGRATION` | A record exactly one schema version old is migrated in place; any older or unreadable record is discarded and the device returns to unprovisioned | Device, on read at boot |
 | `INV-BLANK-BOUND` | `blankAfterMinutes` is an integer in 0–120 inclusive. 0 means the backlight is never switched off; any other value is a whole number of minutes. A stored record outside that range is treated as unreadable, which returns the device to unprovisioned rather than guessing a period | Device, on read at boot; and the configuration form, on save |
+| `INV-WAKE-NEEDS-LEARNED-MAC` | A wake is attempted only when `ENTITY-RIGADDRESS` holds an address. A panel that has never seen the PC reachable cannot wake it, says so rather than offering an action that would do nothing, and no packet is sent to a guessed or broadcast-only destination | Device, at the moment the action is offered |
 | `INV-CAPTURE-CLEAN` | A capture contains no field tagged `secret` or identifying | **By construction** — captures serialise `ENTITY-FRAME` only, and no such field appears in it |
 | `INV-SECRET-CONFINEMENT` | Secrets never appear on any screen, in serial output, in logs, in a capture, or in any wire message | **Advisory** — no schema enforces this; it is held by review and by the tests named in Quality & Testing, and can be violated by a careless code change |
 

@@ -7,7 +7,7 @@ trigger: always (raised by security_risk: secrets, network)
 in-scope-subaspects: [trust-boundaries, secrets-credential-handling, authentication-mechanism, authorization, threat-model, encryption, data-protection-mechanisms-per-sensitive-field]
 current-rung: contract-grade
 status: published
-version: 0.7.0
+version: 0.8.0
 ---
 
 # Security & Privacy — cyd-sim-dash
@@ -197,6 +197,7 @@ USB cable. See Open Questions.
 | `SEC-OTA-IMAGE` | OTA images are checked only by the framework's own transfer integrity. No signing or provenance verification is performed | negative |
 | `SEC-STORAGE-PLAIN` | Secrets are stored unencrypted in NVS. Physical access with a cable yields them | negative, exposure named |
 | `SEC-ERASE-OVERWRITE` | The erase action overwrites stored values before deleting their keys | hygiene |
+| `SEC-WAKE-PHYSICAL-ONLY` | The wake action is reachable **only** by touching the panel. It is not exposed on `API-STATE`, not on the configuration page, and not on any network surface — `API-STATE` reports whether it is armed but offers no way to fire it. Anyone who can touch the panel is already standing at the rig and could press its power button | negative, asserted deliberately |
 | `SEC-INPUT-BOUND` | Datagrams larger than 2 KB are rejected before parsing. The receive path uses a fixed buffer and performs no dynamic allocation | hygiene |
 | `SEC-PARSER-FLOOR` | ArduinoJson is pinned at **7.4.3 or later**. Every version through 7.4.2 carries a buffer overrun in string-to-float conversion, reachable by a JSON string of many digits — which is exactly what an untrusted host on the LAN can send, and the 2 KB cap does not close it because 2 KB of digits is ample | hygiene, with a named upstream cause |
 | `SEC-TRANSIT-CLEAR` | Nothing is encrypted in transit, including the credential presented to the configuration page | negative, derived from `SEC-LAN-TRUSTED` |
@@ -241,6 +242,7 @@ the absence is recorded here so it reads as a finding rather than an oversight.
 | S8 | Datagrams of 2 KB, just over 2 KB, and 60 KB are sent; the device neither crashes nor reboots, and any oversized datagram that *is* delivered is rejected before parsing. **Amended 2026-09-22 against measurement:** nothing above **1472 bytes** — the largest UDP payload fitting one 1500-byte MTU frame — is ever delivered to the application on this hardware; the platform drops it below the firmware. The original wording also required the rejection to be *counted*, which this platform makes unobservable: the guard cannot fire, so its counter cannot increment. The guard is kept as defence-in-depth, correct on any platform that reassembles and costing one comparison, and the 2 KB boundary itself is asserted by the unit tier instead | `SEC-INPUT-BOUND` |
 | S9 | A corpus of malformed payloads — truncated, wrong types, deeply nested, duplicate keys, missing keys, **and a numeric string of several hundred digits** — leaves the device running with every one counted | `SEC-INPUT-BOUND`, malformed-input hardening |
 | S12 | The built firmware links ArduinoJson 7.4.3 or later, asserted from the build rather than from documentation | `SEC-PARSER-FLOOR` |
+| S13 | Every HTTP surface is searched for a way to trigger a wake, and none exists: no route, no form field, no query parameter. The only path is the touchscreen | `SEC-WAKE-PHYSICAL-ONLY` |
 | S10 | Serial output, every screen, the state endpoint and a capture file are inspected across a full provisioning and driving cycle; no secret appears in any of them | the confinement invariant's mechanism, advisory |
 | S11 | A capture file taken from a provisioned device contains no SSID, host or device identity | `SEC-FIELD-IDENTIFYING` |
 

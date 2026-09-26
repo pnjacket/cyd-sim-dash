@@ -246,3 +246,20 @@ bindings:
   # CAP-BLANK is not implementable here and the delta is retired rather than built.
   CAP-BLANK: []
   INV-BLANK-BOUND: []
+
+  # --- doc-feature 2026-09-26: wake the rig from the panel. UNBOUND ON PURPOSE --------
+  #
+  # The planner's build-new signal. No locators until the code exists.
+  #
+  # Ordering note: slice 23 (CAP-BLANK) is a prerequisite in practice rather than on paper. The wake
+  # action lives in the `unreachable` state, which is exactly a state that blanks, so the two-touch
+  # sequence only makes sense once blanking exists - and blanking is itself blocked on a feasibility
+  # test of GPIO 21. If the backlight cannot be switched off, the first touch has nothing to wake and
+  # the sequence collapses to one touch.
+  CAP-WAKE-RIG: []
+  ENTITY-RIGADDRESS: []
+  INV-WAKE-NEEDS-LEARNED-MAC: []
+  EVT-WAKE: []
+  COMPONENT-TOUCH: []
+  ADR-TOUCH-SHARED-BUS: []
+  SEC-WAKE-PHYSICAL-ONLY: []

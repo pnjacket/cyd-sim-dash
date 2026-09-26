@@ -7,7 +7,7 @@ trigger: interactive_ui
 in-scope-subaspects: [navigation-ia-contract, screen-specifications, states, user-journeys]
 current-rung: contract-grade
 status: published
-version: 0.8.0
+version: 0.9.0
 ---
 
 # User Experience — cyd-sim-dash
@@ -39,8 +39,10 @@ This concern owns the screens, their layout geometry, their states, and the jour
   for the glyph. Dictum records an advisory scope warning for a UI product with accessibility
   fully out; it blocks nothing. **One safety-adjacent decision was nevertheless taken deliberately
   rather than by default** — the flash rate, see Design Decisions.
-- **No touch interaction in v1** — *deferred*. The panel is read-only, so no panel screen has any
-  interactive control. [FUTURE-SCOPE] Returns if touch is used.
+- ~~**No touch interaction in v1** — deferred.~~ **In scope from 2026-09-26** for exactly one action:
+  `CAP-WAKE-RIG`. The panel remains read-only in every other respect — one control, in one state,
+  doing one thing. The default-and-empty-input-state requirement still falls to the two HTTP screens,
+  because a touch target has no empty state to render.
 - **Modal inertness is degenerate here.** The standard requires modal layers to be inert to both
   pointer and keyboard. No panel screen has layers, modals, pointer input or keyboard input, so
   there is nothing to make inert. Recorded because the rule was applied, not skipped.
@@ -118,6 +120,22 @@ an arriving frame rather than by a user action:
   over-rev state; the flash does not time out.
 - **Edge bars** — independently white or black. Both may be lit at once.
 - **Gear** — any value in its domain, including neutral and reverse.
+- **Offering a wake** — reached from `unreachable` by a touch. The panel lights, keeps the
+  `unreachable` line, and adds a second line inviting another touch. A second touch within the offer
+  window sends the packet; the window lapsing returns the panel to `unreachable` and, if the blanking
+  period has passed, to dark.
+
+  **The first touch never sends.** A blanked panel cannot show what a touch is about to do, so the
+  first one only makes the offer legible. That costs a second touch every time and buys immunity from
+  a sleeve brushing the glass — a spurious wake is not catastrophic, but a panel that does things
+  when nudged is one nobody trusts.
+
+- **Waking** — entered when the packet is sent. The panel confirms briefly, then returns to the link
+  screen and lets the normal ladder speak. It does **not** hold a "waking" message while the rig
+  boots: the panel has no way to know whether the rig is coming up, and a message it cannot retract
+  would keep asserting something it does not know. If the wake worked, the driving screen arrives on
+  its own; if it did not, the operator is looking at `unreachable` again, which is the truth.
+
 - **Blanked** — the backlight is off. Entered when the driving screen has not been showing for
   `blankAfterMinutes`, which covers every non-driving condition: `unreachable`, `noSim`, `stale`,
   `adapterFault`, `unresolved`, `joining` and `drivingPending`. Left the instant a live frame is
@@ -127,6 +145,10 @@ an arriving frame rather than by a user action:
   dark panel mid-transfer reads as a crash and invites pulling the power — the one action that can
   actually brick the device; and **`versionMismatch`** stays lit, because naming the two versions so
   somebody updates the lagging half is the entire purpose of that condition.
+
+  **A touch lights the panel regardless of state**, and restarts the blanking period. That is the one
+  way the backlight comes on other than a live frame, and it is what makes `CAP-WAKE-RIG` reachable at
+  all — the action lives in `unreachable`, which is precisely a state that blanks.
 
   **`SCREEN-SETUP` needs no exception.** It is drawn from the provisioning callback while
   `autoConnect` blocks inside setup, so the loop carrying the blanking timer is not running. It is
@@ -213,6 +235,7 @@ page — see Design Decisions.
 | **Retuned again on the rig**, 2026-09-23: lowest stop unlit, red stop removed, remaining stops widened | Driving it showed what a bench could not. The window is narrow and sits near the top of the rev range, so ordinary driving is almost always inside it — a lit bottom stage meant the bands were on continuously, and a cue that is always on is not a cue. The red stop sat immediately below a flash that is also red, so it announced a change and then announced the same colour again | The bands say nothing at all for the lowest fifth of the window. That is deliberate, and it means the cue starts later than the shift-point arithmetic alone would suggest |
 | **Pure black** at rest | Least light at night, strongest contrast when green first appears | At a glance, an idling panel can look switched off — contradicted by the gear glyph |
 | **Blank the backlight when idle** rather than dim it, decided 2026-09-23 | The idling case is most of the time a rig is powered on, and a dark panel is worth more at night than a dim one. Dimming was available — GPIO 21 is PWM-capable — and was not chosen | A dark panel is indistinguishable from a dead one. Accepted knowingly: a panel that fails to wake is an obvious bug rather than a subtle one, and `API-STATE` reports `backlightOn` while the glass is dark. The cost is real and is not hidden |
+| **Two touches to wake the rig**, decided 2026-09-26 | The first touch lights a dark panel and makes the offer readable; the second acts. A single touch from dark would act on a panel that could not show what it was about to do | A second touch every time, including when the operator knows exactly what they want. Accepted: the panel is read-only in every other respect, so an action that can fire from a brush against the glass is out of character for the whole device |
 | Link screen is **icon plus one line**; detail lives on the configuration page | Keeps the panel glanceable and uncluttered | **Narrows a success criterion.** The panel names the condition but not the configured address, so diagnosing a wrong-but-resolvable host needs the configuration page. Product & Requirements' link-diagnosable criterion carries this as a traced exception |
 | **Boot screen** showing identity and firmware | Firmware version is exactly what you want when a version mismatch is the suspect, and it is visible before anything else can fail | One more screen, briefly delaying the first useful state |
 
