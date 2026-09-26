@@ -46,6 +46,9 @@ static constexpr uint32_t kBootScreenMs = 3000;
 static char          g_deviceId[13] = {0};
 static DeviceConfig  g_cfg;
 static bool          g_hostResolved = false;
+static IPAddress     g_pcAddr;
+static bool          g_pcAddrKnown = false;
+static uint32_t      g_lastReresolveMs = 0;
 static uint32_t      g_connectedAtMs = 0;
 static LinkState     g_shown = static_cast<LinkState>(0xFF);  // nothing drawn yet
 static bool          g_otaRunning = false;
@@ -122,11 +125,23 @@ static void onPortalRaised(WiFiManager* wm) {
 
 // Resolves the configured host. An empty host is not an error state of its own — the ladder has no
 // "unconfigured" condition — so it reports as unresolved, which is what it honestly is.
+// Resolves the configured host, and KEEPS the address.
+//
+// It used to discard it, which is what allowed ENTITY-RIGADDRESS to be learned from any sender at
+// all. The address is needed now: a frame teaches this device a hardware address only if it came
+// from the host the operator configured.
 static bool resolveHost() {
+  g_pcAddrKnown = false;
   if (g_cfg.pcHost[0] == '\0') return false;
-  IPAddress addr;
-  if (addr.fromString(g_cfg.pcHost)) return true;      // a literal address needs no lookup
-  return WiFi.hostByName(g_cfg.pcHost, addr) == 1;
+  if (g_pcAddr.fromString(g_cfg.pcHost)) {             // a literal address needs no lookup
+    g_pcAddrKnown = true;
+    return true;
+  }
+  if (WiFi.hostByName(g_cfg.pcHost, g_pcAddr) == 1) {
+    g_pcAddrKnown = true;
+    return true;
+  }
+  return false;
 }
 
 static void startOta() {
@@ -271,7 +286,31 @@ void loop() {
     // is also the only moment it can be learned - by the time the operator wants a wake, the machine
     // is off and unfindable.
     IPAddress sender;
-    if (net::lastSender(sender)) rigaddr::observe(sender);
+    if (g_pcAddrKnown && net::lastSender(sender)) {
+      const uint32_t foreignBefore = rigaddr::foreignSenderCount();
+      rigaddr::observe(sender, g_pcAddr);
+
+      // A frame from a host that is not the configured one may mean the configured one MOVED - a DHCP
+      // lease renewed under a name that now resolves elsewhere. The resolved address is otherwise only
+      // taken at boot, so without this the panel would go on comparing against a stale address and
+      // quietly never learn again. That silent-failure path is the whole reason this comparison was
+      // resisted in the first place; this is what closes it.
+      //
+      // Re-resolved only on that evidence, and at most every ten seconds. A name lookup blocks, and
+      // paying for one on every frame would cost the renderer far more than the problem is worth. For
+      // a literal address - which is what most panels are configured with - it is free and exact.
+      if (rigaddr::foreignSenderCount() != foreignBefore &&
+          (g_lastReresolveMs == 0 || now - g_lastReresolveMs >= 10000)) {
+        g_lastReresolveMs = now;
+        const bool wasKnown = g_pcAddrKnown;
+        const IPAddress previous = g_pcAddr;
+        g_hostResolved = resolveHost();
+        if (g_pcAddrKnown && (!wasKnown || previous != g_pcAddr)) {
+          Serial.print("[host] the configured host now resolves to ");
+          Serial.println(g_pcAddr);
+        }
+      }
+    }
   }
   if (got.versionRejected) {
     g_versionRejected = true;
@@ -363,6 +402,15 @@ void loop() {
   ctx.blankAfterMinutes = g_cfg.blankAfterMinutes;
   ctx.wakeArmed = g_wake.armed();
   ctx.rigMacKnown = rigaddr::known();
+  ctx.rigMac = rigaddr::macText();
+  ctx.foreignSenderCount = rigaddr::foreignSenderCount();
+
+  char resolvedText[20] = {0};
+  if (g_pcAddrKnown) {
+    snprintf(resolvedText, sizeof(resolvedText), "%u.%u.%u.%u",
+             g_pcAddr[0], g_pcAddr[1], g_pcAddr[2], g_pcAddr[3]);
+  }
+  ctx.resolvedHost = resolvedText;
   stateapi::publish(display, ctx, g_counters);
   configpage::publishCounters(g_counters);
 

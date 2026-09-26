@@ -275,6 +275,11 @@ bindings:
   INV-WAKE-NEEDS-LEARNED-MAC:
     - path: firmware/src/wake.cpp
       symbol: cyd::wake::Sequence::onTouch   # !macKnown returns Lit and never arms
+  INV-RIGADDRESS-FROM-CONFIGURED-HOST:
+    - path: firmware/src/rigaddr.cpp
+      symbol: cyd::rigaddr::observe      # sender must equal the resolved pcHost
+    - path: firmware/firmware.ino
+      symbol: g_lastReresolveMs          # a foreign sender may mean the host moved; re-resolve
   INV-RIGADDRESS-FOLLOWS-HOST:
     - path: firmware/src/rigaddr.cpp
       symbol: cyd::rigaddr::forget

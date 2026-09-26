@@ -46,14 +46,34 @@ uint32_t learnedAtMs();
 // an erase that leaves it behind is a gesture rather than a mechanism.
 void forget();
 
-// Looks `addr` up in the device's own ARP cache and stores what it finds. Call while the PC is known
-// to be reachable — a frame has just been accepted from it, so the cache entry is fresh.
+// Looks the sim PC up in the device's own ARP cache and stores what it finds. Call when a frame has
+// just been accepted, so the cache entry is fresh.
 //
-// Writes to flash only when the address has actually changed. Called on every accepted frame this
-// would otherwise be a flash write at 60 Hz, which would wear out the part in a session.
+// `sender` is where that frame came from and `expected` is the resolved `pcHost`. **Learning happens
+// only when they match.** Taking the sender alone was the earlier rule and it learned the wrong
+// machine in practice, not just in theory: a bench tool feeding the panel from a third host taught it
+// that host's address, and the panel then held a perfectly valid address for a machine nobody wanted
+// woken. Nothing about that was visible - the address was known, the packet was well formed, and the
+// rig ignored it, which is indistinguishable from Wake-on-LAN being switched off there.
+//
+// A non-matching sender is counted rather than ignored silently, because a host other than the
+// configured one feeding this panel is worth knowing about either way.
+//
+// Writes to flash only when the address has actually changed. Called on every accepted frame, this
+// would otherwise be a flash write at 60 Hz, which would wear the part out in a session.
 //
 // Returns true if an address is held afterwards, whether or not this call is what learned it.
-bool observe(const IPAddress& addr);
+bool observe(const IPAddress& sender, const IPAddress& expected);
+
+// The learned address as lower-case colon-separated hex, or an empty string when none is held.
+//
+// Reported by API-STATE. `known()` answers "will a touch offer a wake"; this answers "would it wake
+// the right machine", which is a different question and the one that cannot be answered any other way
+// short of catching the packet on the wire.
+const char* macText();
+
+// How many accepted frames arrived from a host other than the configured one, since boot.
+uint32_t foreignSenderCount();
 
 }  // namespace rigaddr
 }  // namespace cyd

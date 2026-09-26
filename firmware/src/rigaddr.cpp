@@ -2,6 +2,7 @@
 
 #include <Arduino.h>
 #include <Preferences.h>
+#include <stdio.h>
 #include <string.h>
 
 #include <lwip/etharp.h>
@@ -17,6 +18,14 @@ constexpr const char* kKeyMac    = "mac";
 uint8_t  g_mac[6]      = {0};
 bool     g_known       = false;
 uint32_t g_learnedAtMs = 0;
+uint32_t g_foreign     = 0;
+char     g_macText[18] = {0};
+
+void renderMacText() {
+  if (!g_known) { g_macText[0] = 0; return; }
+  snprintf(g_macText, sizeof(g_macText), "%02x:%02x:%02x:%02x:%02x:%02x",
+           g_mac[0], g_mac[1], g_mac[2], g_mac[3], g_mac[4], g_mac[5]);
+}
 
 void store() {
   Preferences p;
@@ -41,16 +50,20 @@ void begin() {
     }
   }
   if (!g_known) memset(g_mac, 0, sizeof(g_mac));
+  renderMacText();
 }
 
 bool known() { return g_known; }
 const uint8_t* mac() { return g_mac; }
 uint32_t learnedAtMs() { return g_learnedAtMs; }
+const char* macText() { return g_macText; }
+uint32_t foreignSenderCount() { return g_foreign; }
 
 void forget() {
   memset(g_mac, 0, sizeof(g_mac));
   g_known = false;
   g_learnedAtMs = 0;
+  g_macText[0] = 0;
 
   Preferences p;
   if (!p.begin(kNamespace, /*readOnly=*/false)) return;
@@ -62,13 +75,24 @@ void forget() {
   p.end();
 }
 
-bool observe(const IPAddress& addr) {
+bool observe(const IPAddress& sender, const IPAddress& expected) {
+  // Only the configured host teaches this device anything.
+  //
+  // The wire contract does not bind a frame to a source, so a frame from elsewhere on the LAN is
+  // perfectly valid and is rendered as usual. What it must not do is redefine what a wake is aimed
+  // at. Counted rather than dropped quietly: something other than the configured host feeding this
+  // panel is worth being able to see.
+  if (sender != expected) {
+    ++g_foreign;
+    return g_known;
+  }
+
   // The ARP cache is the stack's own record of who answered at that address. Reading it rather than
   // probing means learning costs nothing and cannot fail in a way that affects the receive path:
   // either the entry is there because the PC has been talking to us, or it is not and we keep
   // whatever we had.
   ip4_addr_t target;
-  IP4_ADDR(&target, addr[0], addr[1], addr[2], addr[3]);
+  IP4_ADDR(&target, sender[0], sender[1], sender[2], sender[3]);
 
   struct eth_addr* eth = nullptr;
   const ip4_addr_t* ip = nullptr;
@@ -80,6 +104,7 @@ bool observe(const IPAddress& addr) {
   memcpy(g_mac, eth->addr, sizeof(g_mac));
   g_known = true;
   g_learnedAtMs = millis();
+  renderMacText();
 
   if (changed) store();
   return true;

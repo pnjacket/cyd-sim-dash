@@ -42,6 +42,23 @@ struct Context {
   // "the rig is ignoring Wake-on-LAN" look identical from the seat. This is what tells them apart.
   bool        wakeArmed = false;
   bool        rigMacKnown = false;
+
+  // The learned address itself, and how many accepted frames came from somewhere other than the
+  // configured host.
+  //
+  // rigMacKnown answers "will a touch offer a wake". These answer "would it wake the right machine",
+  // which is a different question and was unanswerable without catching the packet on the wire - a
+  // gap found the first time it was asked. Carries no classification tag: a MAC on the operator's own
+  // LAN names a machine they own.
+  const char* rigMac = nullptr;
+  uint32_t    foreignSenderCount = 0;
+
+  // What `configuredHost` actually resolves to, or null when it does not resolve.
+  //
+  // Not the same fact as configuredHost, and the difference is the whole point: one is what the
+  // operator typed and the other is the address frames are matched against. When a name resolves
+  // somewhere unexpected, nothing else on this endpoint would show it.
+  const char* resolvedHost = nullptr;
 };
 
 /// The buffer the projection is rendered into.

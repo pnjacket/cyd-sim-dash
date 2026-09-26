@@ -20,6 +20,8 @@ net::Counters  g_counters;
 char           g_hostBuf[64] = {0};
 char           g_deviceBuf[16] = {0};
 char           g_versionBuf[16] = {0};
+char           g_resolvedBuf[20] = {0};
+char           g_macBuf[18] = {0};
 
 void handleState() {
   char body[kStateBufferBytes];
@@ -48,10 +50,21 @@ void publish(const DisplayState& state, const Context& context, const net::Count
   strncpy(g_versionBuf, context.firmwareVersion == nullptr ? "" : context.firmwareVersion,
           sizeof(g_versionBuf) - 1);
 
+  // Every string the Context carries is copied, without exception. The two added with CAP-WAKE-RIG
+  // are the reason this is now stated as a rule rather than done for three fields that happened to
+  // need it: the resolved address is built on the caller's stack each loop, so aliasing it would
+  // serve freed memory - and the failure would look like a corrupt endpoint rather than like a
+  // lifetime bug, which is the most expensive way for this to go wrong.
+  strncpy(g_resolvedBuf, context.resolvedHost == nullptr ? "" : context.resolvedHost,
+          sizeof(g_resolvedBuf) - 1);
+  strncpy(g_macBuf, context.rigMac == nullptr ? "" : context.rigMac, sizeof(g_macBuf) - 1);
+
   g_context = context;
   g_context.configuredHost = g_hostBuf;
   g_context.deviceId = g_deviceBuf;
   g_context.firmwareVersion = g_versionBuf;
+  g_context.resolvedHost = g_resolvedBuf;
+  g_context.rigMac = g_macBuf;
 }
 
 }  // namespace stateapi

@@ -53,6 +53,7 @@ static void test_every_contracted_field_is_present() {
     // panel looks dead, and a wake that will never be offered looks like a rig ignoring the packet.
     // These four fields are the whole of how those are told apart, so their presence is not optional.
     "\"backlightOn\"", "\"blankAfterMinutes\"", "\"wakeArmed\"", "\"rigMacKnown\"",
+    "\"rigMac\"", "\"foreignSenderCount\"", "\"resolvedHost\"",
   };
   for (size_t i = 0; i < sizeof(required) / sizeof(required[0]); ++i) {
     CHECK(contains(body, required[i]), required[i]);
@@ -200,6 +201,54 @@ static void test_wake_fields_render_both_ways() {
   CHECK(!contains(body, "sendWake"), "and none names the send path");
 }
 
+static void test_the_learned_address_is_reported() {
+  section("the learned address is readable, which rigMacKnown alone could not answer");
+
+  DisplayState s;
+  net::Counters n;
+  char body[stateapi::kStateBufferBytes];
+
+  // The gap this closes: rigMacKnown says a touch will offer a wake, and says nothing about whether it
+  // would wake the right machine. The first time that was asked it could not be answered at all
+  // without catching the packet on the wire - and the panel was in fact holding a bench machine's
+  // address, which is a valid address for a machine nobody wanted woken.
+  stateapi::Context c;
+  c.rigMacKnown = true;
+  c.rigMac = "a4:6b:40:37:88:bc";
+  c.foreignSenderCount = 42;
+  stateapi::render(body, sizeof(body), s, c, n);
+  CHECK(contains(body, "\"rigMac\":\"a4:6b:40:37:88:bc\""), "the address is reported verbatim");
+  CHECK(contains(body, "\"foreignSenderCount\":42"), "and frames from other hosts are counted");
+
+  // null rather than an empty string. An empty string reads as "there is an address and it is blank",
+  // which is not a state this device can be in - the same rule the nullable fields already follow.
+  stateapi::Context none;
+  stateapi::render(body, sizeof(body), s, none, n);
+  CHECK(contains(body, "\"rigMac\":null"), "no address renders as null");
+  CHECK(!contains(body, "\"rigMac\":\"\""), "never as an empty string");
+
+  stateapi::Context empty;
+  empty.rigMac = "";
+  stateapi::render(body, sizeof(body), s, empty, n);
+  CHECK(contains(body, "\"rigMac\":null"), "an empty string is normalised to null");
+
+  // resolvedHost is not the same fact as configuredHost, and conflating them is how an hour goes
+  // missing. One is what the operator typed; the other is what frames are matched against. A null here
+  // means the guard on learning is not armed at all - which is precisely the bug this field was added
+  // to find, and which nothing else on this endpoint would have shown.
+  stateapi::Context resolved;
+  resolved.configuredHost = "rig.local";
+  resolved.resolvedHost = "192.168.50.87";
+  stateapi::render(body, sizeof(body), s, resolved, n);
+  CHECK(contains(body, "\"configuredHost\":\"rig.local\""), "the configured name is reported");
+  CHECK(contains(body, "\"resolvedHost\":\"192.168.50.87\""), "and separately what it resolves to");
+
+  stateapi::Context unresolved;
+  unresolved.configuredHost = "rig.local";
+  stateapi::render(body, sizeof(body), s, unresolved, n);
+  CHECK(contains(body, "\"resolvedHost\":null"), "a name that does not resolve reports null");
+}
+
 static void test_hostile_strings_cannot_break_the_json() {
   section("text from outside cannot break the document");
 
@@ -271,6 +320,9 @@ static void test_worst_case_fits_the_buffer() {
   c.blankAfterMinutes = 120;
   c.wakeArmed = false;                                  // "false" is the longer rendering, so both
   c.rigMacKnown = false;                                // booleans take their worst case here
+  c.rigMac = "ff:ff:ff:ff:ff:ff";                        // the longest each of these can be
+  c.foreignSenderCount = 4294967295u;
+  c.resolvedHost = "255.255.255.255";
 
   net::Counters n;
   n.malformed = n.fieldRange = n.outOfOrder = n.versionRejected = n.oversized = 4294967295u;
@@ -299,6 +351,7 @@ int main() {
   test_counters_are_projected();
   test_values_render();
   test_wake_fields_render_both_ways();
+  test_the_learned_address_is_reported();
   test_hostile_strings_cannot_break_the_json();
   test_worst_case_fits_the_buffer();
 
